@@ -5,7 +5,8 @@ import { Disclaimer } from "../components/layout/Disclaimer";
 
 export const AboutPage = () => {
   return (
-    <div className="max-w-6xl mx-auto px-8 py-10 space-y-8">
+    <div className="bg-violet-50 min-h-screen py-5">
+    <div className="max-w-6xl mx-auto px-8 py-10 space-y-8 bg-white rounded-xl shadow-sm">
       <div>
         <h1 className="text-2xl font-bold">서비스 소개</h1>
         <p className="text-gray-600 mt-1">
@@ -19,6 +20,7 @@ export const AboutPage = () => {
       </div>
       <StatsBar />
       <Disclaimer />
+    </div>
     </div>
   );
 };

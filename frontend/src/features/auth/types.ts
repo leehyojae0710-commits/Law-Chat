@@ -15,3 +15,11 @@ export interface AuthUser {
   email: string;
   role: "USER" | "ADMIN";
 }
+
+export interface mockUser {
+  id: string;
+  name: string;
+  password: string;
+  email: string;
+  role: "USER" | "ADMIN";
+}

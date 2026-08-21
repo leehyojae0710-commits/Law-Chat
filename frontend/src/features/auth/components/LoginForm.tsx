@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { KakaoLoginButton} from "../components/kakaoLogin"
 
 export const LoginForm = () => {
   const navigate = useNavigate();
@@ -11,11 +12,11 @@ export const LoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const user = await login({ email, password });
-      // 관리자 계정이면 어드민 페이지로, 아니면 채팅으로 이동
-      navigate(user.role === "ADMIN" ? "/admin" : "/chat");
+      await login({ email, password });
+      navigate("/");
     } catch {
       // 에러는 useAuth의 error 상태로 화면에 표시됨
+      console.error("로그인 실패");
     }
   };
 
@@ -59,6 +60,7 @@ export const LoginForm = () => {
       >
         {isLoading ? "로그인 중..." : "로그인"}
       </button>
+      <KakaoLoginButton/>
     </form>
   );
 };
