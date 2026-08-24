@@ -1,4 +1,4 @@
-package com.lawchat.infra.ai.config;
+package com.lawchat.infra.lawapi.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -9,13 +9,13 @@ import org.springframework.web.client.RestClient;
 import java.time.Duration;
 
 @Configuration
-public class AiClientConfig {
+public class LawOpenApiConfig {
 
     @Bean
-    public RestClient legalChatbotRestClient(
-            @Value("${ai.legal-chatbot.base-url}") String baseUrl,
-            @Value("${ai.legal-chatbot.connect-timeout-ms:5000}") long connectTimeoutMs,
-            @Value("${ai.legal-chatbot.read-timeout-ms:60000}") long readTimeoutMs
+    public RestClient lawOpenApiRestClient(
+            @Value("${law-api.base-url:https://www.law.go.kr}") String baseUrl,
+            @Value("${law-api.connect-timeout-ms:5000}") long connectTimeoutMs,
+            @Value("${law-api.read-timeout-ms:10000}") long readTimeoutMs
     ) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));
