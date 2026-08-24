@@ -2,18 +2,29 @@ spring:
   application:
     name: backend
   datasource:
-    # law_chat
-    url: jdbc:mysql://localhost:3306/law_chat?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: root
-    password: 1234
+    # MySQL 8 / Connector-J 접속 설정 (DB: law_chat)
+    url: jdbc:mysql://localhost:3306/law_chat?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update      # 개발 단계라 update, 운영 넘어가면 validate로 변경 권장
-    show-sql: true          # 저장되는 SQL을 콘솔에서 직접 보기 위함 (테스트용)
+      # none: Hibernate가 DDL을 건드리지 않음 (schema.sql 기준 유지)
+      ddl-auto: none
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          time_zone: Asia/Seoul
+    open-in-view: false
+
+  # DB 스키마 보호
+  sql:
+    init:
+      mode: never
+
+  jackson:
+    default-property-inclusion: non_null
 
 jwt:
   # HS256 알고리즘 사용을 위해 최소 32자(256비트) 이상의 문자열 필요
@@ -33,3 +44,17 @@ law-api:
   sync:
     enabled-on-startup: true
     cron: "0 0 3 * * *"
+
+logging:
+  level:
+    com.lawchat: debug
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
