@@ -1,11 +1,9 @@
 package com.lawchat.infra.ai.config;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -34,10 +32,14 @@ public class AiClientConfig {
             @Value("${ai.legal-chatbot.connect-timeout-ms:5000}") long connectTimeoutMs,
             @Value("${ai.legal-chatbot.read-timeout-ms:60000}") long readTimeoutMs
     ) {
-        ClientHttpRequestFactory requestFactory = ClientHttpRequestFactoryBuilder.detect()
-                .build(ClientHttpRequestFactorySettings.defaults()
-                        .withConnectTimeout(Duration.ofMillis(connectTimeoutMs))
-                        .withReadTimeout(Duration.ofMillis(readTimeoutMs)));
+        // ★ 기존 코드는 org.springframework.boot.web.client.ClientHttpRequestFactorySettings 와
+        //   org.springframework.http.client.ClientHttpRequestFactoryBuilder 를 import 했는데,
+        //   두 클래스 모두 그 패키지에 없다(Boot 3.4 이후 org.springframework.boot.http.client 로 이동,
+        //   Boot 4.1 에서 다시 시그니처가 바뀜). 그래서 빨간줄이 떴다.
+        //   버전에 흔들리지 않도록 RestClientConfig 와 동일하게 순수 Spring Framework API 로 통일한다.
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));
+        requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
 
         return RestClient.builder()
                 .baseUrl(baseUrl)

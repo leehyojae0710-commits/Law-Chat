@@ -1,8 +1,8 @@
 package com.lawchat.domain.chat.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import com.lawchat.domain.chat.dto.request.ChatMessageRequest;
 import com.lawchat.domain.chat.dto.response.ChatMessageResponse;
 import com.lawchat.domain.chat.dto.response.ChatSessionResponse;
@@ -161,7 +161,7 @@ public class ChatService {
         }
         try {
             return objectMapper.readValue(sourcesJson, new TypeReference<List<LegalSourceResponse>>() {});
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return Collections.emptyList();
         }
     }
@@ -212,7 +212,7 @@ public class ChatService {
 
         try {
             return objectMapper.writeValueAsString(sources);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.warn("sources 직렬화 실패, sources 없이 저장합니다.", e);
             return null;
         }
