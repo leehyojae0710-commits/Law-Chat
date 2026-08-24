@@ -5,7 +5,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -42,7 +42,11 @@ public class ChatFeedbackDataset {
     @Column(length = 255)
     private String reason;
 
-    @CreatedDate
+    // ★ @CreatedDate(Spring Data JPA)는 @EnableJpaAuditing 이 켜져 있어야 값이 채워지는데
+    //   이 프로젝트엔 그 설정이 없다(JpaConfig.java가 빈 파일). 그 상태로 두면 created_at 이
+    //   채워지지 않은 채 INSERT 되어 컬럼의 NOT NULL 제약에 걸려 저장 자체가 실패한다.
+    //   Hibernate가 flush 시점에 직접 채워주는 @CreationTimestamp로 바꿔 이 문제를 없앤다.
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
