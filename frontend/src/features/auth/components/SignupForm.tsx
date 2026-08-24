@@ -8,6 +8,7 @@ export const SignupForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [nickname, setNickname] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,8 +21,8 @@ export const SignupForm = () => {
     }
 
     try {
-      await signup({ email, password, passwordConfirm });
-      navigate("/chat");
+      await signup({ email, nickname, password, passwordConfirm });
+      navigate("/");
     } catch {
       // error 상태는 useAuth에서 관리
     }
@@ -41,6 +42,18 @@ export const SignupForm = () => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
+          required
+          className="w-full mt-1 border rounded-lg px-3 py-2.5 text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">닉네임</label>
+        <input
+          type="nickname"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="닉네임"
           required
           className="w-full mt-1 border rounded-lg px-3 py-2.5 text-sm"
         />
