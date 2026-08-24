@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { login as loginApi, signup as signupApi, logoutApi, kakaoLogin as kakaoLoginApi } from "../../../api/auth";
+import { login as loginApi, signup as signupApi, logoutApi, kakaoLogin as kakaoLoginApi, naverLogin as NaverLoginApi} from "../../../api/auth";
 import { mockLogin, mockSignup, mockLogout } from "../mockAuth";
 import { useAuthStore } from "../../../store/authStore";
 import type { LoginPayload, SignupPayload } from "../types";
@@ -62,5 +62,11 @@ export const useAuth = () => {
     return user;
   }
 
-  return { login, signup, logout, kakaoLogin, isLoading, error };
+  const naverLogin = async (code: string) => {
+    const { user, accessToken } = await NaverLoginApi(code); // 백엔드 /auth/kakao 호출
+    setAuth(user, accessToken); // 여기서 로그인 상태(localStorage + zustand) 세팅됨
+    return user;
+  }
+
+  return { login, signup, logout, kakaoLogin, naverLogin, isLoading, error };
 };

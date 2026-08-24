@@ -13,6 +13,7 @@ import { ChatPage } from "../pages/ChatPage";
 import { AdminPage } from "../pages/AdminPage";
 import { AdminRoute } from "./AdminRoute";
 import { KakaoCallbackPage } from "../pages/KakaoCallbackPage";
+import { NaverCallbackPage } from "../pages/NaverCallbackPage";
 
 export const AppRoutes = () => {
   return (
@@ -25,7 +26,8 @@ export const AppRoutes = () => {
         <Route path="/precedents" element={<PrecedentSearchPage />} />
         <Route path="/support" element={<SupportPage />} />
         <Route path="/notices" element={<NoticePage />} />
-        <Route path="/OAuth" element={<KakaoCallbackPage />} />
+        <Route path="/kakao/OAuth" element={<KakaoCallbackPage />} />
+        <Route path="/naver/OAuth" element={<NaverCallbackPage/>}/>
       </Route>
 
       <Route path="/login" element={<LoginPage />} />

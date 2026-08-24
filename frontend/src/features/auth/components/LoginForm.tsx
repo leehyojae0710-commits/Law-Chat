@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { KakaoLoginButton} from "../components/kakaoLogin"
+import { KakaoLoginButton } from "../components/kakaoLogin"
+import { NaverLoginButton } from "../components/naverLogin"
 
 export const LoginForm = () => {
   const navigate = useNavigate();
@@ -60,7 +61,19 @@ export const LoginForm = () => {
       >
         {isLoading ? "로그인 중..." : "로그인"}
       </button>
-      <KakaoLoginButton/>
+
+      <button
+        type="button"
+        onClick={()=>navigate("/Signup")}
+        className="w-full py-3 rounded-lg bg-violet-600 text-white font-medium disabled:opacity-50"
+      >
+        회원가입
+      </button>
+
+      <div className="flex flex-col gap-3">
+        <KakaoLoginButton />
+        <NaverLoginButton />
+      </div>
     </form>
   );
 };
