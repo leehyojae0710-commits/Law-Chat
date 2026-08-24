@@ -1,0 +1,14 @@
+# 비밀키 / 인증정보
+*.pem
+.env
+.env.*
+
+# LoRA 어댑터 가중치, RAG 인덱스 (용량 크고 재생성 가능 - git에 안 올림)
+weights/
+indexes/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
