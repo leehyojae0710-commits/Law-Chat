@@ -47,21 +47,23 @@ public class Precedent {
     private String caseTypeName; // 사건종류명
 
     @Lob
+    @Column(name = "holding", columnDefinition = "LONGTEXT")
     private String holding; // 판시사항
 
     @Lob
+    @Column(name = "summary", columnDefinition = "LONGTEXT")
     private String summary; // 판결요지
 
     @Lob
-    @Column(name = "referenced_articles")
+    @Column(name = "referenced_articles", columnDefinition = "LONGTEXT")
     private String referencedArticles; // 참조조문
 
     @Lob
-    @Column(name = "referenced_cases")
+    @Column(name = "referenced_cases", columnDefinition = "LONGTEXT")
     private String referencedCases; // 참조판례
 
     @Lob
-    @Column(name = "full_text", nullable = false)
+    @Column(name = "full_text", columnDefinition = "LONGTEXT", nullable = false)
     private String fullText; // 판례내용(전문)
 
     @Column(name = "synced_at", nullable = false)
@@ -69,8 +71,8 @@ public class Precedent {
 
     @Builder
     private Precedent(String caseNumber, String caseName, String courtName, String courtTypeCode,
-                       String caseTypeName, String holding, String summary,
-                       String referencedArticles, String referencedCases, String fullText) {
+                      String caseTypeName, String holding, String summary,
+                      String referencedArticles, String referencedCases, String fullText) {
         this.caseNumber = caseNumber;
         this.caseName = caseName;
         this.courtName = courtName;
@@ -85,8 +87,8 @@ public class Precedent {
     }
 
     public static Precedent create(String caseNumber, String caseName, String courtName, String courtTypeCode,
-                                    String caseTypeName, String holding, String summary,
-                                    String referencedArticles, String referencedCases, String fullText) {
+                                   String caseTypeName, String holding, String summary,
+                                   String referencedArticles, String referencedCases, String fullText) {
         return Precedent.builder()
                 .caseNumber(caseNumber)
                 .caseName(caseName)
