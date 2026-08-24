@@ -1,6 +1,6 @@
 package com.lawchat.global.security;
 
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawchat.global.exception.ErrorCode;
 import com.lawchat.global.exception.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;

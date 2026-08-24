@@ -2,14 +2,13 @@ spring:
   application:
     name: backend
   datasource:
-    # MySQL 8 / Connector-J 접속 설정 (DB: law_chat)
-    url: jdbc:mysql://localhost:3306/law_chat?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&useSSL=false&allowPublicKeyRetrieval=true
+    # connectionTimeZone 대신 serverTimezone=Asia/Seoul 사용 (+09:00 호환)
+    url: jdbc:mysql://localhost:3306/law_chat?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      # none: Hibernate가 DDL을 건드리지 않음 (schema.sql 기준 유지)
       ddl-auto: none
     properties:
       hibernate:
@@ -18,7 +17,6 @@ spring:
           time_zone: Asia/Seoul
     open-in-view: false
 
-  # DB 스키마 보호
   sql:
     init:
       mode: never
@@ -27,10 +25,9 @@ spring:
     default-property-inclusion: non_null
 
 jwt:
-  # HS256 알고리즘 사용을 위해 최소 32자(256비트) 이상의 문자열 필요
   secret: your-lawchat-secret-key-must-be-at-least-32-characters-long-123456
-  expiration-millis: 86400000          # 24시간 (1일 = 86,400,000 ms)
-  refresh-expiration-millis: 604800000 # 7일 (필요 시)
+  expiration-millis: 86400000
+  refresh-expiration-millis: 604800000
 
 ai:
   legal-chatbot:
