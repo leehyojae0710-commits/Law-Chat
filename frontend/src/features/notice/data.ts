@@ -27,5 +27,6 @@ export const mockPopupNotices: Notice[] = [
     date: "2026.08.09",
     popupStartDate: "2026-08-01",
     popupEndDate: "2026-12-31",
+    imageUrl: "https://placehold.co/440x300",
   },
 ];

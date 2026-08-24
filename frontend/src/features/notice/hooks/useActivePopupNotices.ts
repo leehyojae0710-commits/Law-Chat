@@ -4,12 +4,16 @@ import { mockPopupNotices } from "../data";
 import { getPopupNotices } from "../../../api/notice";
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_NOTICE === "true";
+const DISMISS_KEY = "popupDismissedUntil";
 
 export const useActivePopupNotices = () => {
   const [notices, setNotices] = useState<Notice[]>([]);
 
   useEffect(() => {
-    const dismissed = getDismissedIds();
+    if (isPopupDismissed()) {
+      setNotices([]);
+      return;
+    }
 
     if (USE_MOCK) {
       const today = new Date();
@@ -19,38 +23,25 @@ export const useActivePopupNotices = () => {
         const end = new Date(n.popupEndDate);
         return today >= start && today <= end;
       });
-      setNotices(filtered.filter((n) => !dismissed.includes(n.id)));
+      setNotices(filtered);
       return;
     }
 
     getPopupNotices()
-      .then((data) => setNotices(data.filter((n) => !dismissed.includes(n.id))))
+      .then(setNotices)
       .catch(() => setNotices([]));
   }, []);
 
   return notices;
 };
 
-const DISMISS_KEY = "dismissedNoticeIds";
-
-const getDismissedIds = (): string[] => {
-  try {
-    const raw = localStorage.getItem(DISMISS_KEY);
-    if (!raw) return [];
-    const parsed: { id: string; until: number }[] = JSON.parse(raw);
-    const now = Date.now();
-    return parsed.filter((d) => d.until > now).map((d) => d.id);
-  } catch {
-    return [];
-  }
+const isPopupDismissed = (): boolean => {
+  const until = localStorage.getItem(DISMISS_KEY);
+  if (!until) return false;
+  return Date.now() < Number(until);
 };
 
-export const dismissNoticeForDays = (id: string, days: number) => {
-  const raw = localStorage.getItem(DISMISS_KEY);
-  const list: { id: string; until: number }[] = raw ? JSON.parse(raw) : [];
+export const dismissPopupForDays = (days: number) => {
   const until = Date.now() + days * 24 * 60 * 60 * 1000;
-  localStorage.setItem(
-    DISMISS_KEY,
-    JSON.stringify([...list.filter((d) => d.id !== id), { id, until }])
-  );
+  localStorage.setItem(DISMISS_KEY, String(until));
 };
