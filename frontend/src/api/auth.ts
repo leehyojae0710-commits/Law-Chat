@@ -24,3 +24,11 @@ export const getMe = async (): Promise<AuthUser> => {
 export const logoutApi = async (): Promise<void> => {
   await apiClient.post("/auth/logout");
 };
+<<<<<<< HEAD
+=======
+
+export const kakaoLogin = async (code: string): Promise<AuthResponse> => {
+  const res = await apiClient.post<AuthResponse>("/auth/kakao", { code });
+  return res.data;
+};
+>>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff

@@ -8,7 +8,11 @@ interface AdminSidebarProps {
 const tabs: { key: AdminTab; label: string }[] = [
   { key: "dashboard", label: "대시보드" },
   { key: "inquiries", label: "문의 처리하기" },
+<<<<<<< HEAD
   { key: "content", label: "콘텐츠 관리" },
+=======
+  //{ key: "content", label: "콘텐츠 관리" },
+>>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
   { key: "notices", label: "공지사항 관리" },
 ];
 
