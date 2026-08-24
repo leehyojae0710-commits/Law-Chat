@@ -5,6 +5,7 @@ export interface LoginPayload {
 
 export interface SignupPayload {
   email: string;
+  nickname:string;
   password: string;
   passwordConfirm: string;
 }
@@ -15,8 +16,6 @@ export interface AuthUser {
   email: string;
   role: "USER" | "ADMIN";
 }
-<<<<<<< HEAD
-=======
 
 export interface mockUser {
   id: string;
@@ -25,4 +24,4 @@ export interface mockUser {
   email: string;
   role: "USER" | "ADMIN";
 }
->>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
+
