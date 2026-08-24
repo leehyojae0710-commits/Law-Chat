@@ -55,7 +55,7 @@ export const useAuth = () => {
       logoutStore();
     }
   };
-
+  
   const kakaoLogin = async (code: string) => {
     const { user, accessToken } = await kakaoLoginApi(code); // 백엔드 /auth/kakao 호출
     setAuth(user, accessToken); // 여기서 로그인 상태(localStorage + zustand) 세팅됨

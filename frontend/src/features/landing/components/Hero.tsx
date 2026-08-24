@@ -1,12 +1,19 @@
 import { Link } from "react-router-dom";
 import { ChatPreviewCard } from "./ChatPreviewCard";
 import { GuestFeatureList } from "./GuestFeatureList";
+<<<<<<< HEAD
+=======
 import { useAuthStore } from "../../../store/authStore";
+>>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
 
 const badges = ["24시간 상담", "근거 조문 제시", "개인정보 마스킹"];
 
 export const Hero = () => {
+<<<<<<< HEAD
+
+=======
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+>>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
   return (
     <section className="bg-violet-50/60 shadow-sm">
       <div className="max-w-[1700px] mx-auto px-10 py-16">
@@ -20,11 +27,23 @@ export const Hero = () => {
             </h1>
             <p className="mt-5 text-[15px] text-slate-500 leading-relaxed whitespace-pre-line">
               법률 용어를 몰라도 괜찮습니다. 평소 쓰는 말로 질문하면
+<<<<<<< HEAD
+              <br/>
+=======
               <br />
+>>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
               AI가 법률 표현으로 바꿔 근거 조문·판례와 함께 안내합니다.
             </p>
 
             <div className="mt-7 flex items-center gap-3">
+<<<<<<< HEAD
+              <Link
+                to="/login"
+                className="px-5 py-3 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
+              >
+                로그인하고 질문하기
+              </Link>
+=======
               {isAuthenticated ? (
                 <data>
                   <Link
@@ -46,6 +65,7 @@ export const Hero = () => {
                   </data>
                 )
               }
+>>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
               <button className="px-5 py-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
                 이용 방법 보기
               </button>

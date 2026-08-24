@@ -25,12 +25,15 @@ export const logoutApi = async (): Promise<void> => {
   await apiClient.post("/auth/logout");
 };
 
+
 export const kakaoLogin = async (code: string): Promise<AuthResponse> => {
   const res = await apiClient.post<AuthResponse>("/auth/kakao", { code });
   return res.data;
 };
 
+
 export const naverLogin = async (code: string): Promise<AuthResponse> => {
   const res = await apiClient.post<AuthResponse>("/auth/naver", { code });
   return res.data;
 };
+
