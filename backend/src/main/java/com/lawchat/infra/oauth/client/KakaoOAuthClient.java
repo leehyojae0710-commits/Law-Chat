@@ -1,6 +1,5 @@
 package com.lawchat.infra.oauth.client;
 
-import com.lawchat.infra.oauth.dto.KakaoTokenInfo;
 import com.lawchat.infra.oauth.dto.KakaoTokenResponse;
 import com.lawchat.infra.oauth.dto.KakaoUserInfo;
 import com.lawchat.infra.oauth.config.KakaoOAuthProperties;
@@ -33,7 +32,6 @@ public class KakaoOAuthClient {
 
     private static final String TOKEN_URL = "https://kauth.kakao.com/oauth/token";
     private static final String USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";
-    private static final String TOKEN_INFO_URL = "https://kapi.kakao.com/v1/user/access_token_info";
     private static final String UNLINK_URL = "https://kapi.kakao.com/v1/user/unlink";
 
     private final RestClient restClient;
@@ -92,49 +90,7 @@ public class KakaoOAuthClient {
     }
 
     // ==================================================================
-    // 2) 액세스 토큰 검증 (프론트가 SDK로 받은 토큰을 보낸 경우)
-    // ==================================================================
-
-    /**
-     * 액세스 토큰이 유효한지, 그리고 "우리 앱에서 발급된 것"인지 확인한다.
-     *
-     * ★ appId 대조를 반드시 해야 한다.
-     *   공격자가 자기 카카오 앱에서 발급받은 토큰을 우리 서버에 보내면
-     *   /v2/user/me 는 정상 응답한다. appId 를 확인하지 않으면
-     *   그 사람이 우리 서비스 회원으로 로그인되어 버린다.
-     */
-    public KakaoTokenInfo verifyAccessToken(String kakaoAccessToken) {
-
-        KakaoTokenInfo info;
-        try {
-            info = restClient.get()
-                    .uri(TOKEN_INFO_URL)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + kakaoAccessToken)
-                    .retrieve()
-                    .body(KakaoTokenInfo.class);
-
-        } catch (RestClientException e) {
-            // 401 이면 만료됐거나 위조된 토큰
-            log.warn("카카오 액세스 토큰 검증 실패: {}", e.getMessage());
-            throw new BusinessException(ErrorCode.KAKAO_INVALID_TOKEN);
-        }
-
-        if (info == null || info.id() == null) {
-            throw new BusinessException(ErrorCode.KAKAO_INVALID_TOKEN);
-        }
-
-        // 우리 앱 ID를 설정해 둔 경우에만 대조한다(미설정 시 검증 생략 → 운영에서는 반드시 설정할 것)
-        if (properties.appId() != null && !properties.appId().equals(info.appId())) {
-            log.warn("다른 앱에서 발급된 카카오 토큰 - expected={}, actual={}",
-                    properties.appId(), info.appId());
-            throw new BusinessException(ErrorCode.KAKAO_INVALID_TOKEN);
-        }
-
-        return info;
-    }
-
-    // ==================================================================
-    // 3) 사용자 정보 조회
+    // 2) 사용자 정보 조회
     // ==================================================================
 
     /**
@@ -161,7 +117,7 @@ public class KakaoOAuthClient {
     }
 
     // ==================================================================
-    // 4) 연결 끊기 (회원 탈퇴 시 호출 권장)
+    // 3) 연결 끊기 (회원 탈퇴 시 호출 권장)
     // ==================================================================
 
     /**

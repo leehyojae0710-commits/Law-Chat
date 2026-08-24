@@ -79,7 +79,6 @@ public class SecurityConfig {
                                 "/api/auth/signup",
                                 "/api/auth/login",
                                 "/api/auth/kakao",
-                                "/api/auth/kakao/token",
                                 "/api/users/check-email",
                                 "/api/users/check-nickname"
                         ).permitAll()

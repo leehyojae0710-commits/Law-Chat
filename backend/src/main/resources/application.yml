@@ -63,11 +63,6 @@ oauth:
     #     (개편된 화면에서는 [앱] > [플랫폼 키] > [REST API 키] > [리다이렉트 URI])
     redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:3000/oauth/kakao}
 
-    # [4] 앱 ID — 프론트가 보낸 액세스 토큰이 우리 앱 것인지 대조할 때 사용
-    #     위치: 내 애플리케이션 > 앱 설정 > 요약 정보 > 앱 ID
-    #     비워두면 대조 검증이 생략된다. 운영에서는 반드시 채울 것.
-    app-id: ${KAKAO_APP_ID:}
-
 logging:
   level:
     com.lawchat: debug

@@ -1,7 +1,6 @@
 package com.lawchat.domain.user.controller;
 
 import com.lawchat.domain.user.dto.request.KakaoLoginRequest;
-import com.lawchat.domain.user.dto.request.KakaoTokenLoginRequest;
 import com.lawchat.domain.user.dto.request.LoginRequest;
 import com.lawchat.domain.user.dto.request.SignupRequest;
 import com.lawchat.domain.user.dto.response.AuthResponse;
@@ -62,7 +61,7 @@ public class AuthController {
     }
 
     /**
-     * [방식 A] 카카오 로그인 — 인가코드 방식 (권장)
+     * 카카오 로그인 — 인가코드 방식
      * POST /api/auth/kakao
      *
      * 프론트 흐름
@@ -81,21 +80,6 @@ public class AuthController {
     public ResponseEntity<AuthResponse> kakaoLogin(@Valid @RequestBody KakaoLoginRequest request) {
         return ResponseEntity.ok(
                 userService.kakaoLoginWithCode(request.code(), request.redirectUri()));
-    }
-
-    /**
-     * [방식 B] 카카오 로그인 — 액세스 토큰 방식
-     * POST /api/auth/kakao/token
-     *
-     * 프론트가 Kakao SDK for JavaScript 로 직접 로그인해 액세스 토큰을 이미 가진 경우 사용한다.
-     * 이 경로에서는 client_secret 이 쓰이지 않는 대신,
-     * 서버가 access_token_info API 로 "우리 앱 토큰인지" 반드시 검증한다.
-     */
-    @PostMapping("/kakao/token")
-    public ResponseEntity<AuthResponse> kakaoLoginWithToken(
-            @Valid @RequestBody KakaoTokenLoginRequest request) {
-        return ResponseEntity.ok(
-                userService.kakaoLoginWithAccessToken(request.kakaoAccessToken()));
     }
 
     /**

@@ -146,7 +146,7 @@ public class UserService {
     // ==================================================================
 
     /**
-     * [방식 A] 인가코드 방식.
+     * 카카오 로그인 — 인가코드 방식.
      *
      * 흐름
      *   1) 프론트가 넘긴 인가코드를 카카오에 보내 액세스 토큰으로 교환한다.
@@ -165,21 +165,6 @@ public class UserService {
         return processKakaoUser(userInfo);
     }
 
-    /**
-     * [방식 B] 액세스 토큰 방식 (프론트가 JS SDK 로 이미 로그인한 경우).
-     *
-     * 인가코드 교환 단계가 없으므로 client_secret 은 쓰이지 않는다.
-     * 대신 "받은 토큰이 우리 앱 것인지" 검증하는 단계가 필수다.
-     */
-    @Transactional
-    public AuthResponse kakaoLoginWithAccessToken(String kakaoAccessToken) {
-
-        // ★ 이 한 줄이 없으면 남의 앱 토큰으로 로그인이 뚫린다
-        kakaoOAuthClient.verifyAccessToken(kakaoAccessToken);
-
-        KakaoUserInfo userInfo = kakaoOAuthClient.requestUserInfo(kakaoAccessToken);
-        return processKakaoUser(userInfo);
-    }
 
     /**
      * 카카오에서 받아온 사용자 정보로 로그인 또는 가입 처리 (두 방식의 공통 로직).
