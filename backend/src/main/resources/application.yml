@@ -3,7 +3,7 @@ spring:
     name: backend
   datasource:
     # connectionTimeZone 대신 serverTimezone=Asia/Seoul 사용 (+09:00 호환)
-    url: jdbc:mysql://localhost:3306/law_chat?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://192.168.0.197:3306/law_chat?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -39,7 +39,7 @@ law-api:
   oc: 202608110004094829
   base-url: http://www.law.go.kr/DRF
   sync:
-    enabled-on-startup: true
+    enabled-on-startup: false
     cron: "0 0 3 * * *"
 
 logging:
