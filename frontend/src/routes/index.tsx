@@ -12,10 +12,8 @@ import { SignupPage } from "../pages/SignupPage";
 import { ChatPage } from "../pages/ChatPage";
 import { AdminPage } from "../pages/AdminPage";
 import { AdminRoute } from "./AdminRoute";
-<<<<<<< HEAD
-=======
 import { KakaoCallbackPage } from "../pages/KakaoCallbackPage";
->>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
+import { NaverCallbackPage } from "../pages/NaverCallbackPage";
 
 export const AppRoutes = () => {
   return (
@@ -28,10 +26,8 @@ export const AppRoutes = () => {
         <Route path="/precedents" element={<PrecedentSearchPage />} />
         <Route path="/support" element={<SupportPage />} />
         <Route path="/notices" element={<NoticePage />} />
-<<<<<<< HEAD
-=======
-        <Route path="/OAuth" element={<KakaoCallbackPage />} />
->>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
+        <Route path="/kakao/OAuth" element={<KakaoCallbackPage />} />
+        <Route path="/naver/OAuth" element={<NaverCallbackPage/>}/>
       </Route>
 
       <Route path="/login" element={<LoginPage />} />

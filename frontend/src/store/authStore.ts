@@ -25,10 +25,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("authUser", JSON.stringify(user));
     set({ user, accessToken, isAuthenticated: true, isAdmin: user.role === "ADMIN" });
-<<<<<<< HEAD
-=======
-    console.log("Auth state updated localStorage:", { user, accessToken });
->>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
   },
 
   logout: () => {

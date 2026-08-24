@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-<<<<<<< HEAD
-=======
-import { KakaoLoginButton} from "../components/kakaoLogin"
->>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
+
+import { KakaoLoginButton } from "../components/kakaoLogin"
+import { NaverLoginButton } from "../components/naverLogin"
+
 
 export const LoginForm = () => {
   const navigate = useNavigate();
@@ -15,19 +15,11 @@ export const LoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-<<<<<<< HEAD
-      const user = await login({ email, password });
-      // 관리자 계정이면 어드민 페이지로, 아니면 채팅으로 이동
-      navigate(user.role === "ADMIN" ? "/admin" : "/chat");
-    } catch {
-      // 에러는 useAuth의 error 상태로 화면에 표시됨
-=======
       await login({ email, password });
       navigate("/");
     } catch {
       // 에러는 useAuth의 error 상태로 화면에 표시됨
       console.error("로그인 실패");
->>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
     }
   };
 
@@ -71,10 +63,18 @@ export const LoginForm = () => {
       >
         {isLoading ? "로그인 중..." : "로그인"}
       </button>
-<<<<<<< HEAD
-=======
-      <KakaoLoginButton/>
->>>>>>> 9f52ea2cf75bc8ac6461bd6cc3c9f94a0c772eff
+      <button
+        type="button"
+        onClick={()=>navigate("/Signup")}
+        className="w-full py-3 rounded-lg bg-violet-600 text-white font-medium disabled:opacity-50"
+      >
+        회원가입
+      </button>
+
+      <div className="flex flex-col gap-3">
+        <KakaoLoginButton />
+        <NaverLoginButton />
+      </div>
     </form>
   );
 };

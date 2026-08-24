@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 spring:
   application:
     name: lawchat-api
@@ -72,3 +73,10 @@ logging:
 
 server:
   port: 8080
+=======
+ai:
+  legal-chatbot:
+    base-url: http://<EC2 퍼블릭IP 또는 도메인>:8000
+    connect-timeout-ms: 5000
+    read-timeout-ms: 60000
+>>>>>>> main
