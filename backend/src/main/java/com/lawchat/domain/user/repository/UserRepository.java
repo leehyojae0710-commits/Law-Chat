@@ -3,7 +3,11 @@ package com.lawchat.domain.user.repository;
 import com.lawchat.domain.user.entity.User;
 import com.lawchat.domain.user.entity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,4 +40,28 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** 특정 상태를 제외하고 조회할 때 사용 (예: 탈퇴 회원 제외) */
     Optional<User> findByUserIdAndStatusNot(Long userId, UserStatus status);
+
+    /**
+     * 익명화 대상 조회 — 보존 기간이 지난 탈퇴 회원 중 아직 익명화되지 않은 회원.
+     *
+     * 조건이 세 개다.
+     *  1) status = DELETED           : 탈퇴한 회원만
+     *  2) deletedAt <= cutoff        : 보존 기간이 지난 회원만
+     *                                  (cutoff = 오늘 - 보존일수. 이보다 과거에 탈퇴했으면 기간 만료)
+     *  3) email 또는 socialId 가 있음 : 아직 익명화되지 않은 회원만
+     *                                  이메일 가입자는 email 이, 소셜 가입자는 socialId 가 반드시 있으므로
+     *                                  둘 다 null 이면 이미 처리가 끝난 것이다.
+     *                                  이 조건이 없으면 배치가 돌 때마다 같은 회원을 계속 UPDATE 한다.
+     *
+     * 메서드 이름만으로는 이 조합을 표현할 수 없어 @Query 로 JPQL 을 직접 작성했다.
+     */
+    @Query("""
+            SELECT u FROM User u
+             WHERE u.status = :status
+               AND u.deletedAt IS NOT NULL
+               AND u.deletedAt <= :cutoff
+               AND (u.email IS NOT NULL OR u.socialId IS NOT NULL)
+            """)
+    List<User> findAnonymizationTargets(@Param("status") UserStatus status,
+                                        @Param("cutoff") LocalDateTime cutoff);
 }
