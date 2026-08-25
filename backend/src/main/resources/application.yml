@@ -16,7 +16,7 @@ spring:
     #       MySQL 8 기본 인증 플러그인(caching_sha2_password) + useSSL=false 조합에서
     #       이게 없으면 "Public Key Retrieval is not allowed" 로 접속이 아예 안 된다.
     url: jdbc:mysql://localhost:3306/lawchat?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&useSSL=false&allowPublicKeyRetrieval=true
-    username: ${DB_USERNAME:root}
+    username: ${DB_USERNAME:team}
     password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
@@ -86,7 +86,7 @@ oauth:
   kakao:
     # [1] REST API 키  — 공개돼도 되는 값 (앱 식별자)
     #     위치: 카카오 개발자센터 > 내 애플리케이션 > 앱 설정 > 앱 키 > REST API 키
-    client-id: ${KAKAO_CLIENT_ID:여기에_REST_API_키}
+    client-id: ${KAKAO_CLIENT_ID:264b3934317b0bdf9e0264a0b9b831e1}
 
     # [2] 클라이언트 시크릿  — ★서버만 알아야 하는 비밀값★
     #     위치: 내 애플리케이션 > 제품 설정 > 카카오 로그인 > 보안 > Client Secret
@@ -98,7 +98,20 @@ oauth:
     # [3] Redirect URI — 개발자센터에 등록한 값과 문자 하나까지 동일해야 함 (다르면 KOE006)
     #     위치: 내 애플리케이션 > 제품 설정 > 카카오 로그인 > Redirect URI
     #     (개편된 화면에서는 [앱] > [플랫폼 키] > [REST API 키] > [리다이렉트 URI])
-    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:3000/oauth/kakao}
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/kakao/oauth}
+
+  naver:
+    # [1] Client ID — 공개돼도 되는 앱 식별자
+    #     위치: 네이버 개발자센터 > Application > 내 애플리케이션 > 애플리케이션 정보
+    client-id: ${NAVER_CLIENT_ID:86rGzZDmkleqP77UeWS3}
+
+    # [2] Client Secret — ★서버만 알아야 하는 비밀값★
+    #     같은 화면에서 확인. 카카오와 달리 네이버는 처음부터 필수값이다.
+    client-secret: ${NAVER_CLIENT_SECRET:여기에_NAVER_CLIENT_SECRET}
+
+    # [3] Callback URL — 개발자센터 [API 설정 > 로그인 오픈 API 서비스 환경]에
+    #     등록한 값과 문자 하나까지 동일해야 함 (다르면 invalid_request)
+    redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:5173/naver/oauth}
 
 ai:
   legal-chatbot:
