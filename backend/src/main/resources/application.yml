@@ -53,15 +53,15 @@ oauth:
     # [1] REST API 키 (공개 식별자)
     client-id: ${KAKAO_CLIENT_ID:264b3934317b0bdf9e0264a0b9b831e1}
     # [2] Client Secret (서버 비밀값)
-    client-secret: ${KAKAO_CLIENT_SECRET:여기에_CLIENT_SECRET}
+    client-secret: ${KAKAO_CLIENT_SECRET:YI17oZY1Rx7X8TiWXRQs5rrmKYOe4xtA}
     # [3] Redirect URI
-    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/kakao/oauth}
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/kakao/OAuth}
 
   naver:
     # [1] Client ID (공개 식별자)
     client-id: ${NAVER_CLIENT_ID:86rGzZDmkleqP77UeWS3}
     # [2] Client Secret (서버 비밀값)
-    client-secret: ${NAVER_CLIENT_SECRET:여기에_NAVER_CLIENT_SECRET}
+    client-secret: ${NAVER_CLIENT_SECRET:ERf11LU30J}
     # [3] Callback URL
     redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:5173/naver/oauth}
 
@@ -78,7 +78,7 @@ law-api:
   oc: "202608110004094829"
   base-url: http://www.law.go.kr/DRF
   sync:
-    enabled-on-startup: true
+    enabled-on-startup: false
     cron: "0 0 3 * * *"
 
 user:
