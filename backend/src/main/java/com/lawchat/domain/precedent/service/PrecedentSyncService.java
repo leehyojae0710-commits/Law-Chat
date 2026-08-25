@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 /**
  * law.go.kr 판례 Open API -&gt; precedents 테이블 동기화.
@@ -114,6 +115,7 @@ public class PrecedentSyncService {
                 detail.caseName(),
                 detail.courtName(),
                 detail.courtTypeCode(),
+                parseJudgmentDate(detail.judgmentDate()),
                 detail.caseTypeName(),
                 detail.holdingIssues(),
                 detail.summary(),
@@ -121,5 +123,22 @@ public class PrecedentSyncService {
                 detail.referencedCases(),
                 detail.fullText()
         );
+    }
+
+    /**
+     * law.go.kr API의 judgmentDate(선고일자)는 "yyyyMMdd" 형식 문자열로 온다.
+     * 값이 없거나(null/blank) 형식이 어긋나면 저장을 막지 않고 null로 처리한다
+     * (선고일자 필터를 안 쓰는 케이스는 여전히 정상 동작해야 하므로).
+     */
+    private LocalDate parseJudgmentDate(String judgmentDate) {
+        if (judgmentDate == null || judgmentDate.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(judgmentDate.trim(), API_DATE_FORMAT);
+        } catch (DateTimeParseException e) {
+            log.warn("선고일자 파싱 실패, null로 저장합니다. judgmentDate={}", judgmentDate);
+            return null;
+        }
     }
 }
