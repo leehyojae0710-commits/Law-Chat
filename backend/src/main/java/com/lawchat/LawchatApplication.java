@@ -19,9 +19,9 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 // @ConfigurationProperties 가 붙은 클래스(KakaoOAuthProperties)를 찾아 빈으로 등록해 준다.
 // 이게 없으면 카카오 설정값이 주입되지 않아 NullPointerException 이 난다.
 @ConfigurationPropertiesScan
-public class LawChatApplication {
+public class LawchatApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(LawChatApplication.class, args);
+        SpringApplication.run(LawchatApplication.class, args);
     }
 }
