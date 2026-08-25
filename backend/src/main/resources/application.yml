@@ -4,11 +4,7 @@ spring:
   datasource:
     # connectionTimeZone 대신 serverTimezone=Asia/Seoul 사용 (+09:00 호환)
     url: jdbc:mysql://192.168.0.197:3306/law_chat?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
-<<<<<<< HEAD
-    username: ${DB_USERNAME:root}
-=======
     username: ${DB_USERNAME:team}
->>>>>>> main
     password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
