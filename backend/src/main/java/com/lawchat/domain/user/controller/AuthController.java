@@ -2,6 +2,7 @@ package com.lawchat.domain.user.controller;
 
 import com.lawchat.domain.user.dto.request.KakaoLoginRequest;
 import com.lawchat.domain.user.dto.request.LoginRequest;
+import com.lawchat.domain.user.dto.request.NaverLoginRequest;
 import com.lawchat.domain.user.dto.request.SignupRequest;
 import com.lawchat.domain.user.dto.response.AuthResponse;
 import com.lawchat.domain.user.service.UserService;
@@ -10,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * 인증(로그인/회원가입/로그아웃) 전용 컨트롤러.
@@ -80,6 +83,41 @@ public class AuthController {
     public ResponseEntity<AuthResponse> kakaoLogin(@Valid @RequestBody KakaoLoginRequest request) {
         return ResponseEntity.ok(
                 userService.kakaoLoginWithCode(request.code(), request.redirectUri()));
+    }
+
+    /**
+     * 네이버 로그인 시작 — state 발급
+     * GET /api/auth/naver/state
+     *
+     * 프론트 흐름
+     *   1. 이 API 를 먼저 호출해 state 를 받는다.
+     *   2. 사용자를 아래 주소로 보낸다. 이때 1)에서 받은 state 를 그대로 실어야 한다.
+     *      https://nid.naver.com/oauth2.0/authorize
+     *        ?client_id={Client ID}&redirect_uri={등록한 URI}&response_type=code&state={받은 state}
+     *   3. 로그인/동의 후 redirect_uri 로 ?code=xxxx&state=yyyy 가 붙어 돌아온다.
+     *   4. code 와 그 state 를 그대로 POST /api/auth/naver 로 보낸다.
+     *
+     * state 가 필수인 이유는 네이버 스펙 요구사항이자 CSRF 방지용이다.
+     * 상세: NaverStateProvider 주석 참고.
+     */
+    @GetMapping("/naver/state")
+    public ResponseEntity<Map<String, String>> issueNaverState() {
+        return ResponseEntity.ok(Map.of("state", userService.issueNaverState()));
+    }
+
+    /**
+     * 네이버 로그인 — 인가코드 방식
+     * POST /api/auth/naver
+     *
+     * code 와 함께 /naver/state 로 발급받았던 state 를 그대로 보내야 한다.
+     * 서버가 위변조/만료 여부를 검증한 뒤에만 토큰 교환을 진행한다.
+     *
+     * 신규 사용자면 자동 가입 후 로그인 처리되며, 응답은 일반 로그인과 동일한 AuthResponse 다.
+     */
+    @PostMapping("/naver")
+    public ResponseEntity<AuthResponse> naverLogin(@Valid @RequestBody NaverLoginRequest request) {
+        return ResponseEntity.ok(
+                userService.naverLoginWithCode(request.code(), request.state(), request.redirectUri()));
     }
 
     /**

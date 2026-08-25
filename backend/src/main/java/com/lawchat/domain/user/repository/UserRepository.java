@@ -1,5 +1,6 @@
 package com.lawchat.domain.user.repository;
 
+import com.lawchat.domain.user.entity.SocialProvider;
 import com.lawchat.domain.user.entity.User;
 import com.lawchat.domain.user.entity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -36,7 +37,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByNickname(String nickname);
 
     /** 소셜 로그인 시 provider + socialId 조합으로 기존 회원 조회 */
-    Optional<User> findBySocialProviderAndSocialId(String socialProvider, String socialId);
+    Optional<User> findBySocialProviderAndSocialId(SocialProvider socialProvider, String socialId);
 
     /** 특정 상태를 제외하고 조회할 때 사용 (예: 탈퇴 회원 제외) */
     Optional<User> findByUserIdAndStatusNot(Long userId, UserStatus status);

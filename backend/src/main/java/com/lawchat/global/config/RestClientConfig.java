@@ -30,4 +30,20 @@ public class RestClientConfig {
                 .requestFactory(factory)
                 .build();
     }
+
+    /**
+     * 네이버 인증 서버 호출용. kakaoRestClient 와 설정은 동일하지만,
+     * 빈을 하나 더 두는 이유는 NaverOAuthClient/KakaoOAuthClient 가 각자
+     * 생성자 파라미터 이름으로 빈을 구분해 주입받기 때문이다(타입만으로는 둘 다 RestClient).
+     */
+    @Bean
+    public RestClient naverRestClient() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(3));
+        factory.setReadTimeout(Duration.ofSeconds(5));
+
+        return RestClient.builder()
+                .requestFactory(factory)
+                .build();
+    }
 }

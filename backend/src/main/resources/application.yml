@@ -15,7 +15,7 @@ spring:
     #   - allowPublicKeyRetrieval=true
     #       MySQL 8 기본 인증 플러그인(caching_sha2_password) + useSSL=false 조합에서
     #       이게 없으면 "Public Key Retrieval is not allowed" 로 접속이 아예 안 된다.
-    url: jdbc:mysql://localhost:3306/lawchat?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://192.168.0.197:3306/lawchat?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:team}
     password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
