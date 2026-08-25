@@ -70,7 +70,7 @@ oauth:
 # ==========================================
 ai:
   legal-chatbot:
-    base-url: http://100.55.86.134:8000
+    base-url: http://54.167.66.54:8000
     connect-timeout-ms: 5000
     read-timeout-ms: 60000
 
