@@ -22,7 +22,7 @@ export const listConversations = async (params?: {
   favorite?: boolean;
   keyword?: string;
 }): Promise<Conversation[]> => {
-  const res = await apiClient.get<Conversation[]>("/chat/conversations", {
+  const res = await apiClient.get<Conversation[]>("/chat/sessions", {
     params: {
       favorite: params?.favorite ? 1 : undefined,
       keyword: params?.keyword || undefined,
@@ -32,12 +32,12 @@ export const listConversations = async (params?: {
 };
 
 export const getConversation = async (id: string): Promise<ConversationDetail> => {
-  const res = await apiClient.get<ConversationDetail>(`/chat/conversations/${id}`);
+  const res = await apiClient.get<ConversationDetail>(`/chat/sessions/${id}`);
   return res.data;
 };
 
 export const startConversation = async (content: string): Promise<SendMessageResult> => {
-  const res = await apiClient.post<SendMessageResult>("/chat/conversations", { content });
+  const res = await apiClient.post<SendMessageResult>("/chat/sessions", { content });
   return res.data;
 };
 
@@ -46,7 +46,7 @@ export const sendMessage = async (
   content: string
 ): Promise<{ userMessage: ChatMessage; assistantMessage: ChatMessage }> => {
   const res = await apiClient.post<{ userMessage: ChatMessage; assistantMessage: ChatMessage }>(
-    `/chat/conversations/${conversationId}/messages`,
+    `/chat/sessions/${conversationId}/messages`,
     { content }
   );
   return res.data;
@@ -56,14 +56,14 @@ export const toggleFavoriteConversation = async (
   id: string,
   isFavorite: boolean
 ): Promise<Conversation> => {
-  const res = await apiClient.patch<Conversation>(`/chat/conversations/${id}/favorite`, {
+  const res = await apiClient.patch<Conversation>(`/chat/sessions/${id}/favorite`, {
     isFavorite,
   });
   return res.data;
 };
 
 export const deleteConversation = async (id: string): Promise<void> => {
-  await apiClient.delete(`/chat/conversations/${id}`);
+  await apiClient.delete(`/chat/sessions/${id}`);
 };
 
 export const submitMessageFeedback = async (
