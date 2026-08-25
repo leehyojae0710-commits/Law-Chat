@@ -10,7 +10,6 @@ version = '0.0.1-SNAPSHOT'
 
 java {
     toolchain {
-        feature/verification
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
