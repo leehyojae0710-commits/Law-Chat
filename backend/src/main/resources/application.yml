@@ -1,12 +1,21 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
 spring:
   application:
     name: backend
+
   datasource:
-    # connectionTimeZone 대신 serverTimezone=Asia/Seoul 사용 (+09:00 호환)
     url: jdbc:mysql://192.168.0.197:3306/law_chat?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:team}
     password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -24,11 +33,41 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
+# ==========================================
+# JWT Token Settings
+# ==========================================
 jwt:
-  secret: your-lawchat-secret-key-must-be-at-least-32-characters-long-123456
-  expiration-millis: 86400000
-  refresh-expiration-millis: 604800000
+  secret: ${JWT_SECRET:your-lawchat-secret-key-must-be-at-least-32-characters-long-123456}
+  # Access Token: 15분 (15 * 60 * 1000 = 900,000 ms)
+  access-expiration-millis: ${JWT_ACCESS_EXPIRATION:900000}
+  # 기존 expiration-millis 호환용 (15분)
+  expiration-millis: ${JWT_EXPIRATION:900000}
+  # Refresh Token: 7일 (7 * 24 * 60 * 60 * 1000 = 604,800,000 ms)
+  refresh-expiration-millis: ${JWT_REFRESH_EXPIRATION:604800000}
 
+# ==========================================
+# OAuth Social Login Settings
+# ==========================================
+oauth:
+  kakao:
+    # [1] REST API 키 (공개 식별자)
+    client-id: ${KAKAO_CLIENT_ID:264b3934317b0bdf9e0264a0b9b831e1}
+    # [2] Client Secret (서버 비밀값)
+    client-secret: ${KAKAO_CLIENT_SECRET:여기에_CLIENT_SECRET}
+    # [3] Redirect URI
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/kakao/oauth}
+
+  naver:
+    # [1] Client ID (공개 식별자)
+    client-id: ${NAVER_CLIENT_ID:86rGzZDmkleqP77UeWS3}
+    # [2] Client Secret (서버 비밀값)
+    client-secret: ${NAVER_CLIENT_SECRET:여기에_NAVER_CLIENT_SECRET}
+    # [3] Callback URL
+    redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:5173/naver/oauth}
+
+# ==========================================
+# External Service & Domain Settings
+# ==========================================
 ai:
   legal-chatbot:
     base-url: http://100.55.86.134:8000
@@ -36,26 +75,21 @@ ai:
     read-timeout-ms: 60000
 
 law-api:
-  oc: 202608110004094829
+  oc: "202608110004094829"
   base-url: http://www.law.go.kr/DRF
   sync:
-    enabled-on-startup: false
+    enabled-on-startup: true
     cron: "0 0 3 * * *"
 
 user:
   withdrawal:
-    retention-days: ${WITHDRAWAL_RETENTION_DAYS:180}    
+    retention-days: ${WITHDRAWAL_RETENTION_DAYS:180}
 
+# ==========================================
+# Logging
+# ==========================================
 logging:
   level:
     com.lawchat: debug
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
-
-server:
-  port: 8080
-  servlet:
-    encoding:
-      charset: UTF-8
-      enabled: true
-      force: true

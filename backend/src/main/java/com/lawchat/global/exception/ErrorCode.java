@@ -28,6 +28,7 @@ public enum ErrorCode {
 
     // 404
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
+    PRECEDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "판례를 찾을 수 없습니다."),
 
     // 409
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),

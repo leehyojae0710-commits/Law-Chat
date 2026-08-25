@@ -85,6 +85,11 @@ public class SecurityConfig {
                                 "/api/users/check-nickname"
                         ).permitAll()
 
+                        // 판례 북마크(저장)는 로그인 필요 — 아래 permitAll 규칙보다 먼저 와야 우선 적용된다.
+                        .requestMatchers(HttpMethod.GET, "/api/precedents/bookmarks").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/precedents/*/bookmark").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/precedents/*/bookmark").authenticated()
+
                         // 공지사항/판례 조회 등 비로그인 열람 허용 영역
                         .requestMatchers(HttpMethod.GET, "/api/notices/**", "/api/precedents/**").permitAll()
 
