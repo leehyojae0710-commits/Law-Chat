@@ -4,7 +4,11 @@ spring:
   datasource:
     # connectionTimeZone 대신 serverTimezone=Asia/Seoul 사용 (+09:00 호환)
     url: jdbc:mysql://192.168.0.197:3306/law_chat?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+<<<<<<< HEAD
     username: ${DB_USERNAME:root}
+=======
+    username: ${DB_USERNAME:team}
+>>>>>>> main
     password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
@@ -31,7 +35,7 @@ jwt:
 
 ai:
   legal-chatbot:
-    base-url: http://13.217.199.103:8000
+    base-url: http://100.55.86.134:8000
     connect-timeout-ms: 5000
     read-timeout-ms: 60000
 
@@ -41,6 +45,10 @@ law-api:
   sync:
     enabled-on-startup: false
     cron: "0 0 3 * * *"
+
+user:
+  withdrawal:
+    retention-days: ${WITHDRAWAL_RETENTION_DAYS:180}    
 
 logging:
   level:
