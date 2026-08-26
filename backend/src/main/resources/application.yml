@@ -54,7 +54,7 @@ oauth:
     # [2] Client Secret (서버 비밀값)
     client-secret: ${KAKAO_CLIENT_SECRET}
     # [3] Redirect URI
-    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/kakao/OAuth}
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/kakao/oauth}
 
   naver:
     # [1] Client ID (공개 식별자)
