@@ -4,10 +4,6 @@ import org.springframework.http.HttpStatus;
 
 /**
  * 서비스 전역 에러 코드.
- *
- * 에러를 enum 한 곳에 모아두면
- *  - 프론트가 code 문자열로 분기할 수 있고(메시지 문구가 바뀌어도 안전),
- *  - HTTP 상태코드를 실수로 뒤섞어 쓰는 일이 줄어든다.
  */
 public enum ErrorCode {
 
@@ -29,6 +25,9 @@ public enum ErrorCode {
     // 404
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
     PRECEDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "판례를 찾을 수 없습니다."),
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 공지사항입니다."),
+    POPUP_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 팝업입니다."),
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다."),
 
     // 409
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
@@ -37,10 +36,15 @@ public enum ErrorCode {
             "해당 이메일로 이미 가입된 계정이 있습니다. 이메일 로그인을 이용해 주세요."),
 
     // 502 — 외부 연동 실패
-    KAKAO_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "카카오 로그인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."),
-    NAVER_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "네이버 로그인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    KAKAO_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "카카오 로그인 처리에 실패했습니다. 잠시후 다시 시도해 주세요."),
+    NAVER_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "네이버 로그인 처리에 실패했습니다. 잠시후 다시 시도해 주세요."),
+
+    // 400 — notice 도메인 추가
+    INVALID_POPUP_PERIOD(HttpStatus.BAD_REQUEST, "노출 종료 일시는 시작 일시보다 뒤여야 합니다."),
+    INVALID_FILE(HttpStatus.BAD_REQUEST, "유효하지 않은 파일입니다."),
 
     // 500
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다. 잠시 후 다시 시도해주세요."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
 
     private final HttpStatus status;
