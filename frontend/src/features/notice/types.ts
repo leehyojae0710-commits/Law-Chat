@@ -2,6 +2,7 @@ export interface Notice {
   id: string;
   category: string;
   title: string;
+  detail:string;
   date: string;
   pinned?: boolean;
   popupStartDate?: string; // 팝업 노출 시작일 (YYYY-MM-DD)

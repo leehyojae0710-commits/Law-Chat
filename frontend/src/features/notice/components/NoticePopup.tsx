@@ -51,13 +51,14 @@ export const NoticePopup = ({ notices, onCloseAll }: NoticePopupProps) => {
             </button>
           )}
 
-          <div className="flex-1 min-w-0 min-h-[88px] flex flex-col justify-center">
+          <div className="flex-1 min-w-0 min-h-[100px] flex flex-col justify-center">
             {current.imageUrl ? (
               <img src={current.imageUrl} alt={current.title} className="w-full h-auto max-h-72 object-contain rounded-lg" />
             ) : (
               <>
                 <p className="font-semibold mb-2 whitespace-pre-line line-clamp-2">{current.title}</p>
                 <p className="text-xs text-gray-400 mb-4">{current.date} 게시</p>
+                <p className="text-xs mb-4">{current.detail}</p>
               </>
             )}
           </div>
