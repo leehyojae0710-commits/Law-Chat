@@ -12,8 +12,8 @@ spring:
   datasource:
     # connectionTimeZone 대신 serverTimezone=Asia/Seoul 사용 (+09:00 호환)
     url: jdbc:mysql://192.168.0.197:3306/law_chat?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
-    username: ${DB_USERNAME:team}
-    password: ${DB_PASSWORD:1234}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -36,7 +36,7 @@ spring:
 # JWT Token Settings
 # ==========================================
 jwt:
-  secret: ${JWT_SECRET:your-lawchat-secret-key-must-be-at-least-32-characters-long-123456}
+  secret: ${JWT_SECRET}
   # Access Token: 15분 (15 * 60 * 1000 = 900,000 ms)
   access-expiration-millis: ${JWT_ACCESS_EXPIRATION:900000}
   # 기존 expiration-millis 호환용 (15분)
@@ -49,18 +49,18 @@ jwt:
 # ==========================================
 oauth:
   kakao:
-    # [1] REST API 키 (공개 식별자)
-    client-id: ${KAKAO_CLIENT_ID:264b3934317b0bdf9e0264a0b9b831e1}
+    # [1] REST API 키 (공개 식별자 - 그 자체로는 민감하지 않지만 팀 공용 값이라 .env로 관리)
+    client-id: ${KAKAO_CLIENT_ID}
     # [2] Client Secret (서버 비밀값)
-    client-secret: ${KAKAO_CLIENT_SECRET:여기에_CLIENT_SECRET}
+    client-secret: ${KAKAO_CLIENT_SECRET}
     # [3] Redirect URI
-    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/kakao/oauth}
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/kakao/OAuth}
 
   naver:
     # [1] Client ID (공개 식별자)
-    client-id: ${NAVER_CLIENT_ID:86rGzZDmkleqP77UeWS3}
+    client-id: ${NAVER_CLIENT_ID}
     # [2] Client Secret (서버 비밀값)
-    client-secret: ${NAVER_CLIENT_SECRET:여기에_NAVER_CLIENT_SECRET}
+    client-secret: ${NAVER_CLIENT_SECRET}
     # [3] Callback URL
     redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:5173/naver/oauth}
 
