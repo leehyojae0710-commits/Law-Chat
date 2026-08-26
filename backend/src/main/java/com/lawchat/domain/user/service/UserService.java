@@ -1,12 +1,17 @@
 package com.lawchat.domain.user.service;
 
 import com.lawchat.infra.oauth.client.KakaoOAuthClient;
+import com.lawchat.infra.oauth.client.NaverOAuthClient;
 import com.lawchat.infra.oauth.dto.KakaoTokenResponse;
 import com.lawchat.infra.oauth.dto.KakaoUserInfo;
+import com.lawchat.infra.oauth.dto.NaverTokenResponse;
+import com.lawchat.infra.oauth.dto.NaverUserInfo;
+import com.lawchat.infra.oauth.state.NaverStateProvider;
 import com.lawchat.domain.user.dto.request.LoginRequest;
 import com.lawchat.domain.user.dto.request.SignupRequest;
 import com.lawchat.domain.user.dto.response.AuthResponse;
 import com.lawchat.domain.user.dto.response.UserProfileResponse;
+import com.lawchat.domain.user.entity.SocialProvider;
 import com.lawchat.domain.user.entity.User;
 import com.lawchat.domain.user.repository.UserRepository;
 import com.lawchat.global.exception.BusinessException;
@@ -33,13 +38,12 @@ public class UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
-    /** users.social_provider 에 저장할 값. 네이버/구글 추가 시 enum 으로 승격을 권장. */
-    private static final String KAKAO = "KAKAO";
-
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final KakaoOAuthClient kakaoOAuthClient;
+    private final NaverOAuthClient naverOAuthClient;
+    private final NaverStateProvider naverStateProvider;
 
     /**
      * 생성자 주입.
@@ -52,11 +56,15 @@ public class UserService {
     public UserService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider jwtTokenProvider,
-                       KakaoOAuthClient kakaoOAuthClient) {
+                       KakaoOAuthClient kakaoOAuthClient,
+                       NaverOAuthClient naverOAuthClient,
+                       NaverStateProvider naverStateProvider) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.kakaoOAuthClient = kakaoOAuthClient;
+        this.naverOAuthClient = naverOAuthClient;
+        this.naverStateProvider = naverStateProvider;
     }
 
     // ==================================================================
@@ -162,61 +170,114 @@ public class UserService {
         KakaoTokenResponse token = kakaoOAuthClient.requestToken(authorizationCode, redirectUri);
         KakaoUserInfo userInfo = kakaoOAuthClient.requestUserInfo(token.accessToken());
 
-        return processKakaoUser(userInfo);
+        return processSocialLogin(
+                SocialProvider.KAKAO,
+                String.valueOf(userInfo.id()),
+                userInfo.getNicknameOrNull(),
+                userInfo.getProfileImageOrNull(),
+                userInfo.getVerifiedEmailOrNull());
     }
 
+    // ==================================================================
+    // 네이버 소셜 로그인
+    // ==================================================================
 
     /**
-     * 카카오에서 받아온 사용자 정보로 로그인 또는 가입 처리 (두 방식의 공통 로직).
+     * 네이버 로그인 시작 전에 프론트가 먼저 호출하는 API.
      *
-     * 조회 키는 이메일이 아니라 카카오 회원번호(social_id)다.
-     * 이메일은 동의항목이라 없을 수도 있고 사용자가 변경할 수도 있어 식별자로 부적합하다.
+     * 네이버는 인가 요청에 state 파라미터가 ★필수★이고, 콜백에서 이 값이
+     * 그대로 돌아왔는지 검증해야 CSRF 공격(공격자가 자기 인가코드를 피해자
+     * 세션에 심는 것)을 막을 수 있다.
+     *
+     * state 는 서버 저장소 없이 발급한다 — 세션/Redis 를 새로 두지 않고
+     * NaverStateProvider 가 HMAC 서명으로 자체 검증 가능한 값을 만든다.
+     * (자세한 트레이드오프는 NaverStateProvider 주석 참고)
      */
-    private AuthResponse processKakaoUser(KakaoUserInfo userInfo) {
+    public String issueNaverState() {
+        return naverStateProvider.generate();
+    }
 
-        String socialId = String.valueOf(userInfo.id());
-        String kakaoEmail = userInfo.getVerifiedEmailOrNull();
+    /**
+     * 네이버 로그인 — 인가코드 방식.
+     *
+     * 흐름은 카카오와 동일하되, 콜백으로 돌아온 state 가 issueNaverState() 로
+     * 발급했던 값과 일치하는지(=위변조되지 않았는지, 유효시간 내인지) 먼저 검증한다.
+     * 이 검증을 건너뛰면 카카오와 달리 네이버는 곧바로 KOE006 류가 아니라
+     * "다른 사람이 시작한 로그인 흐름에 내 인가코드가 끼어드는" CSRF 로 이어진다.
+     */
+    @Transactional
+    public AuthResponse naverLoginWithCode(String authorizationCode, String state, String redirectUri) {
 
-        User user = userRepository.findBySocialProviderAndSocialId(KAKAO, socialId)
-                .orElseGet(() -> registerKakaoUser(socialId, userInfo, kakaoEmail));
+        naverStateProvider.validate(state);
+
+        NaverTokenResponse token = naverOAuthClient.requestToken(authorizationCode, state, redirectUri);
+        NaverUserInfo userInfo = naverOAuthClient.requestUserInfo(token.accessToken());
+
+        return processSocialLogin(
+                SocialProvider.NAVER,
+                userInfo.getIdOrNull(),
+                userInfo.getNicknameOrNull(),
+                userInfo.getProfileImageOrNull(),
+                userInfo.getEmailOrNull());
+    }
+
+    // ==================================================================
+    // 소셜 로그인 공통 로직 (카카오/네이버 공용)
+    // ==================================================================
+
+    /**
+     * 소셜 provider 에서 받아온 사용자 정보로 로그인 또는 가입 처리.
+     *
+     * 조회 키는 이메일이 아니라 provider 회원번호(social_id)다.
+     * 이메일은 동의항목이라 없을 수도 있고 사용자가 변경할 수도 있어 식별자로 부적합하다.
+     *
+     * 카카오/네이버가 각자의 응답 DTO 를 이 메서드가 아는 5개 값으로 미리 풀어서 넘기므로,
+     * 구글 등 다른 provider 를 추가할 때도 이 메서드는 그대로 재사용할 수 있다.
+     */
+    private AuthResponse processSocialLogin(SocialProvider provider, String socialId,
+                                            String nickname, String profileImg, String email) {
+
+        User user = userRepository.findBySocialProviderAndSocialId(provider, socialId)
+                .orElseGet(() -> registerSocialUser(provider, socialId, nickname, profileImg, email));
 
         if (user.isDeleted()) {
-            // 탈퇴했던 회원이 다시 카카오로 로그인하면 계정을 복구한다.
+            // 탈퇴했던 회원이 다시 소셜로 로그인하면 계정을 복구한다.
             // 정책상 재가입을 막아야 한다면 여기서 예외를 던지도록 바꾸면 된다.
             user.reactivate();
         }
 
-        user.syncSocialProfile(userInfo.getProfileImageOrNull());
+        user.syncSocialProfile(profileImg);
         user.login();
 
-        log.info("카카오 로그인 성공 - userId={}", user.getUserId());
+        log.info("{} 로그인 성공 - userId={}", provider, user.getUserId());
 
         String jwt = jwtTokenProvider.createAccessToken(user);
         return AuthResponse.of(jwt, jwtTokenProvider.getExpiresInSeconds(), user);
     }
 
-    /** 카카오 신규 회원 가입 처리 */
-    private User registerKakaoUser(String socialId, KakaoUserInfo userInfo, String kakaoEmail) {
+    /** 소셜 신규 회원 가입 처리 (카카오/네이버 공용) */
+    private User registerSocialUser(SocialProvider provider, String socialId,
+                                     String nicknameOrNull, String profileImg, String email) {
 
         // 같은 이메일로 이미 "이메일 가입"한 계정이 있으면 UNIQUE 제약에 걸린다.
-        // 자동으로 계정을 합치면 카카오 이메일 도용 시 계정 탈취로 이어질 수 있으므로,
+        // 자동으로 계정을 합치면 소셜 이메일 도용 시 계정 탈취로 이어질 수 있으므로,
         // 안전하게 이메일 로그인을 안내하고 중단한다.
-        if (kakaoEmail != null && userRepository.existsByEmail(kakaoEmail)) {
+        if (email != null && userRepository.existsByEmail(email)) {
             throw new BusinessException(ErrorCode.EMAIL_ALREADY_REGISTERED_LOCALLY);
         }
 
-        String nickname = resolveNickname(userInfo.getNicknameOrNull());
+        String nickname = resolveNickname(nicknameOrNull);
 
         User newUser = User.createSocialUser(
                 socialId,
-                KAKAO,
+                provider,
                 nickname,
-                userInfo.getProfileImageOrNull(),
-                kakaoEmail          // 미동의 시 null 로 저장된다 (컬럼이 nullable)
+                profileImg,
+                email               // 미동의 시 null 로 저장된다 (컬럼이 nullable)
         );
 
         User saved = userRepository.save(newUser);
-        log.info("카카오 신규 가입 - userId={}", saved.getUserId());
+        log.info("{} 신규 가입 - userId={}", provider, saved.getUserId());
         return saved;
     }
 

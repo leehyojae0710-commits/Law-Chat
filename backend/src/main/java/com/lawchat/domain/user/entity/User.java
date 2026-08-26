@@ -52,9 +52,13 @@ public class User {
     @Column(name = "profile_img", length = 512)
     private String profileImg;
 
-    /** "KAKAO", "NAVER", "GOOGLE" 등 */
+    /**
+     * 소셜 로그인 제공자. DB 컬럼은 VARCHAR(50) 그대로이고,
+     * EnumType.STRING 이라 "KAKAO"/"NAVER" 문자열로 저장/조회된다 (스키마 변경 없음).
+     */
+    @Enumerated(EnumType.STRING)
     @Column(name = "social_provider", length = 50)
-    private String socialProvider;
+    private SocialProvider socialProvider;
 
     @Enumerated(EnumType.STRING) // ENUM 문자열 그대로 저장
     @Column(name = "status", nullable = false)
@@ -111,7 +115,7 @@ public class User {
      *              users.email 에 UNIQUE 제약이 있으므로, 이미 쓰이는 이메일이면
      *              서비스 레이어에서 null 로 바꿔 넘겨야 INSERT 가 실패하지 않는다.
      */
-    public static User createSocialUser(String socialId, String socialProvider,
+    public static User createSocialUser(String socialId, SocialProvider socialProvider,
                                         String nickname, String profileImg, String email) {
         User user = new User();
         user.socialId = socialId;
@@ -246,7 +250,7 @@ public class User {
     public String getSocialId() { return socialId; }
     public String getNickname() { return nickname; }
     public String getProfileImg() { return profileImg; }
-    public String getSocialProvider() { return socialProvider; }
+    public SocialProvider getSocialProvider() { return socialProvider; }
     public UserStatus getStatus() { return status; }
     public Boolean getIsAdmin() { return isAdmin; }
     public LocalDateTime getCreatedAt() { return createdAt; }

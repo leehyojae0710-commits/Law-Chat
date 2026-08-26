@@ -15,6 +15,7 @@ public enum ErrorCode {
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
     PASSWORD_NOT_MATCH(HttpStatus.BAD_REQUEST, "현재 비밀번호가 일치하지 않습니다."),
     SOCIAL_USER_CANNOT_LOGIN_LOCALLY(HttpStatus.BAD_REQUEST, "소셜 계정으로 가입된 회원입니다. 소셜 로그인을 이용해 주세요."),
+    INVALID_STATE(HttpStatus.BAD_REQUEST, "로그인 요청이 유효하지 않습니다. 다시 시도해 주세요."),
 
     // 401
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
@@ -37,6 +38,7 @@ public enum ErrorCode {
 
     // 502 — 외부 연동 실패
     KAKAO_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "카카오 로그인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    NAVER_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "네이버 로그인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."),
 
     // 500
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
