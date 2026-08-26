@@ -241,11 +241,6 @@ public class User {
         return this.socialProvider != null;
     }
 
-    public boolean isActiveAdmin() {
-        return Boolean.TRUE.equals(this.isAdmin)
-                && this.status == UserStatus.ACTIVE
-                && this.deletedAt == null;
-    }
     // ------------------------------------------------------------------
     // Getter (setter 는 의도적으로 만들지 않음)
     // ------------------------------------------------------------------

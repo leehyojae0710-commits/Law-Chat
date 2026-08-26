@@ -28,8 +28,8 @@ public class AdminValidator {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // is_admin 뿐 아니라 탈퇴/로그아웃 계정이 아닌지(status, deleted_at)까지 함께 확인
-        if (!user.isActiveAdmin()) {
+        // is_admin 이 true 인지 null-safe 하게 확인 (Boolean 오토언박싱 NPE 방지)
+        if (!Boolean.TRUE.equals(user.getIsAdmin())) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
     }
