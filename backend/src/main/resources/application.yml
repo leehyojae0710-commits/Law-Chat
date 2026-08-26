@@ -63,7 +63,8 @@ oauth:
     client-secret: ${NAVER_CLIENT_SECRET}
     # [3] Callback URL
     redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:5173/naver/oauth}
-
+    state-validation-enabled: ${NAVER_STATE_VALIDATION_ENABLED:true}
+    
 # ==========================================
 # External Service & Domain Settings
 # ==========================================
