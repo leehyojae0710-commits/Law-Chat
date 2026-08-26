@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    # connectionTimeZone 대신 serverTimezone=Asia/Seoul 사용 (+09:00 호환)
+    url: jdbc:mysql://192.168.0.197:3306/law_chat?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:team}
+    password: ${DB_PASSWORD:1234}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Seoul
+    open-in-view: false
+
+  sql:
+    init:
+      mode: never
+
+  jackson:
+    default-property-inclusion: non_null
+
+jwt:
+  secret: your-lawchat-secret-key-must-be-at-least-32-characters-long-123456
+  expiration-millis: 86400000
+  refresh-expiration-millis: 604800000
+
+ai:
+  legal-chatbot:
+    base-url: http://54.167.66.54:8000
+    connect-timeout-ms: 5000
+    read-timeout-ms: 60000
+
+law-api:
+  oc: 202608110004094829
+  base-url: http://www.law.go.kr/DRF
+  sync:
+    enabled-on-startup: false
+    cron: "0 0 3 * * *"
+
+user:
+  withdrawal:
+    retention-days: ${WITHDRAWAL_RETENTION_DAYS:180}    
+
+logging:
+  level:
+    com.lawchat: debug
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
