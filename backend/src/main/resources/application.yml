@@ -37,6 +37,19 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME}
+    password: ${GMAIL_APP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
 file:
   upload-dir: \\192.168.0.229\uploads
 
@@ -71,7 +84,8 @@ oauth:
     client-secret: ${NAVER_CLIENT_SECRET}
     # [3] Callback URL
     redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:5173/naver/oauth}
-
+    state-validation-enabled: ${NAVER_STATE_VALIDATION_ENABLED:true}
+    
 # ==========================================
 # External Service & Domain Settings
 # ==========================================

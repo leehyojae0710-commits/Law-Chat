@@ -32,8 +32,8 @@ export const kakaoLogin = async (code: string): Promise<AuthResponse> => {
 };
 
 
-export const naverLogin = async (code: string): Promise<AuthResponse> => {
-  const res = await apiClient.post<AuthResponse>("/auth/naver", { code });
+export const naverLogin = async (code: string, state: string): Promise<AuthResponse> => {
+  const res = await apiClient.post<AuthResponse>("/auth/naver", { code, state });
   return res.data;
 };
 
