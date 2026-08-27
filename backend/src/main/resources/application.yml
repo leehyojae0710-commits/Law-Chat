@@ -32,7 +32,11 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
-  # 메일 설정 (상단 spring 블록 내부로 통합)
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -45,6 +49,9 @@ spring:
           starttls:
             enable: true
             required: true
+
+file:
+  upload-dir: \\192.168.0.229\uploads
 
 # ==========================================
 # JWT Token Settings

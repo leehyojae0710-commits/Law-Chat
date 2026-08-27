@@ -264,3 +264,4 @@ public class User {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
 }
+
