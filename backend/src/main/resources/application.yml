@@ -32,6 +32,20 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
+  # 메일 설정 (상단 spring 블록 내부로 통합)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME}
+    password: ${GMAIL_APP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
 # ==========================================
 # JWT Token Settings
 # ==========================================

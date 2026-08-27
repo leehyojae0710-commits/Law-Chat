@@ -77,11 +77,12 @@ public class UserService {
      * 처리 순서
      *  1) 이메일 중복 확인  → 중복이면 409
      *  2) 닉네임 중복 확인  → 중복이면 409
-     *  3) 비밀번호를 BCrypt 로 암호화 (평문 저장 절대 금지)
-     *  4) 엔티티 생성 후 저장
-     *  5) 바로 로그인 상태가 되도록 토큰까지 발급해 반환
+     *  3) 전화번호 중복 확인 → 중복이면 409 (아이디 찾기/비밀번호 재설정 인증 수단이라 유일해야 함)
+     *  4) 비밀번호를 BCrypt 로 암호화 (평문 저장 절대 금지)
+     *  5) 엔티티 생성 후 저장
+     *  6) 바로 로그인 상태가 되도록 토큰까지 발급해 반환
      *
-     * 참고: 동시에 같은 이메일로 요청이 들어오면 1)의 검사만으로는 막지 못한다.
+     * 참고: 동시에 같은 이메일/전화번호로 요청이 들어오면 중복 검사만으로는 막지 못한다.
      *       최종 방어선은 DB의 UNIQUE 제약이며, 그 경우
      *       DataIntegrityViolationException 이 발생해 500 이 아닌 별도 처리가 필요하다.
      */
@@ -95,9 +96,14 @@ public class UserService {
             throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
+        String normalizedPhone = request.phone().replaceAll("[^0-9]", "");
+        if (userRepository.existsByPhone(normalizedPhone)) {
+            throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
+        }
+
         String encodedPassword = passwordEncoder.encode(request.password());
 
-        User user = User.createLocalUser(request.email(), encodedPassword, request.nickname());
+        User user = User.createLocalUser(request.email(), encodedPassword, request.nickname(), normalizedPhone);
         User saved = userRepository.save(user);
 
         log.info("회원가입 완료 - userId={}", saved.getUserId());

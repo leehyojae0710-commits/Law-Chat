@@ -20,9 +20,6 @@ import java.util.List;
 
 /**
  * Spring Security 설정 (Spring Security 6.x / Spring Boot 3.x 기준).
- *
- * 예전 방식인 WebSecurityConfigurerAdapter 상속은 제거되었고,
- * 이제는 SecurityFilterChain 을 빈으로 등록하는 방식만 사용한다.
  */
 @Configuration
 @EnableWebSecurity
@@ -39,10 +36,6 @@ public class SecurityConfig {
 
     /**
      * 비밀번호 암호화기.
-     *
-     * BCrypt 는 같은 비밀번호라도 매번 다른 해시를 만든다(내부에 랜덤 salt 포함).
-     * 그래서 "암호화해서 비교"가 아니라 반드시 encoder.matches(평문, 저장된해시) 로 검증해야 한다.
-     * 또한 의도적으로 느리게 설계되어 무차별 대입 공격에 강하다.
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -71,18 +64,23 @@ public class SecurityConfig {
 
                 // URL 별 접근 권한
                 .authorizeHttpRequests(auth -> auth
-                        // CORS 사전 요청(Preflight)은 무조건 허용해야 한다
+                        // CORS 사전 요청(Preflight)은 무조건 허용
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // 로그인 전에 호출해야 하는 API 들은 열어둔다
                         .requestMatchers(
                                 "/api/auth/signup",
                                 "/api/auth/login",
+                                "/api/auth/refresh",
+                                "/api/auth/verification/**",
+                                "/api/auth/password-reset/**",
                                 "/api/auth/kakao",
                                 "/api/auth/naver",
                                 "/api/auth/naver/state",
+                                "/api/verification/**",          // ★ 본인인증(아이디/비밀번호 찾기) 허용
                                 "/api/users/check-email",
-                                "/api/users/check-nickname"
+                                "/api/users/check-nickname",
+                                "/api/users/check-phone"
                         ).permitAll()
 
                         // 판례 북마크(저장)는 로그인 필요 — 아래 permitAll 규칙보다 먼저 와야 우선 적용된다.
@@ -103,8 +101,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // ★ JWT 필터를 아이디/비밀번호 인증 필터 "앞"에 끼워 넣는다.
-                //   그래야 컨트롤러에 도달하기 전에 SecurityContext 에 사용자 정보가 채워진다.
+                // JWT 필터를 아이디/비밀번호 인증 필터 "앞"에 끼워 넣는다.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -112,8 +109,6 @@ public class SecurityConfig {
 
     /**
      * CORS 설정.
-     * 프론트 개발 서버 주소를 allowedOrigins 에 넣어야 브라우저가 응답을 차단하지 않는다.
-     * 실제 배포 시에는 운영 도메인으로 교체할 것. ("*" 는 인증 헤더와 함께 쓸 수 없다)
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
