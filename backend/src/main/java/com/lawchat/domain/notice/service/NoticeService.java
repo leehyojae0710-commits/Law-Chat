@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class NoticeService {
 
-    /** 고정 공지 우선 → 최신순. 클라이언트가 보낸 sort 파라미터는 무시하고 이 정렬로 통일. */
+    /** 고정 공지 우선 -> 최신순. 클라이언트가 보낸 sort 파라미터는 무시하고 이 정렬로 통일. */
     private static final Sort NOTICE_SORT =
             Sort.by(Sort.Order.desc("isPinned"), Sort.Order.desc("createdAt"));
 
@@ -42,6 +42,16 @@ public class NoticeService {
                 : noticeRepository.findByCategory(category, fixedPageable);
 
         return notices.map(NoticeListResponse::from);
+    }
+
+    /**
+     * 관리자 화면용 목록.
+     * 현재는 공개 목록과 조건이 같지만, 별도 메서드로 분리해 두면
+     * 나중에 "비공개 공지"나 "임시저장" 같은 관리자 전용 조건이 생겨도 공개 API 를 건드리지 않는다.
+     */
+    public Page<NoticeListResponse> getNoticesForAdmin(Long userId, NoticeCategory category, Pageable pageable) {
+        adminValidator.validate(userId);
+        return getNotices(category, pageable);
     }
 
     public NoticeDetailResponse getNotice(Long noticeId) {
@@ -73,7 +83,7 @@ public class NoticeService {
     public void delete(Long userId, Long noticeId) {
         adminValidator.validate(userId);
 
-        // 첨부파일 실물은 공유폴더에 남겨둔다 (잘못 지우면 복구 불가 — 필요 시 별도 배치로 정리)
+        // 첨부파일 실물은 공유폴더에 남겨둔다 (잘못 지우면 복구 불가 - 필요 시 별도 배치로 정리)
         noticeRepository.delete(findNoticeOrThrow(noticeId));
     }
 
