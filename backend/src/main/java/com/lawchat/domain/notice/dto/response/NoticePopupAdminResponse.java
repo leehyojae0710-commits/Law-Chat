@@ -18,7 +18,6 @@ public class NoticePopupAdminResponse {
     private final String title;
     private final String fileUrl;
     private final String fileName;
-    private final String linkUrl;
     private final String altText;
     private final LocalDateTime startDate;
     private final LocalDateTime endDate;
@@ -30,7 +29,6 @@ public class NoticePopupAdminResponse {
         this.title = popup.getTitle();
         this.fileUrl = FileUrls.view(popup.getFileUrl());
         this.fileName = popup.getFileUrl();
-        this.linkUrl = popup.getLinkUrl();
         this.altText = popup.getAltText();
         this.startDate = popup.getStartDate();
         this.endDate = popup.getEndDate();

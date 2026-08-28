@@ -14,14 +14,12 @@ public class NoticePopupResponse {
     private final Long popupId;
     private final String title;
     private final String fileUrl;
-    private final String linkUrl;
     private final String altText;
 
     private NoticePopupResponse(NoticePopup popup) {
         this.popupId = popup.getPopupId();
         this.title = popup.getTitle();
         this.fileUrl = FileUrls.view(popup.getFileUrl());
-        this.linkUrl = popup.getLinkUrl();
         this.altText = popup.getAltText();
     }
 
