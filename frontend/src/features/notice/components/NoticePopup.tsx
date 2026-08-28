@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { NoticePopup as NoticePopupType } from "../types";
 import { dismissPopupForDays } from "../hooks/useActivePopupNotices";
+import { useNavigate } from "react-router-dom";
 
 interface NoticePopupProps {
   notices: NoticePopupType[];
@@ -18,6 +19,8 @@ export const NoticePopup = ({ notices, onCloseAll }: NoticePopupProps) => {
   const goNext = () => setIndex((i) => (i === notices.length - 1 ? 0 : i + 1));
   const goTo = (i: number) => setIndex(i);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (notices.length <= 1) return;
     const timer = setTimeout(goNext, AUTO_ADVANCE_MS);
@@ -30,6 +33,11 @@ export const NoticePopup = ({ notices, onCloseAll }: NoticePopupProps) => {
     }
     onCloseAll();
   };
+  
+  const handleGoToNotices=() =>{
+    handleClose();
+    navigate("/notices");
+  }
 
   if (!current) return null;
 
@@ -53,8 +61,10 @@ export const NoticePopup = ({ notices, onCloseAll }: NoticePopupProps) => {
 
           <div className="flex-1 min-w-0 min-h-[100px] flex flex-col justify-center">
             {current.fileUrl ? (
-              <a href={current.linkUrl ?? "#"}>
-                <img src={current.fileUrl} alt={current.altText ?? current.title} className="w-full h-auto max-h-72 object-contain rounded-lg" />
+              <a onClick={handleGoToNotices} style={{ cursor: "pointer" }}>
+                <p>{current.altText}</p>
+                <img src={current.fileUrl} className="w-full h-auto max-h-72 object-contain rounded-lg" />
+                <p>{current.title}</p>
               </a>
             ) : (
               <p className="font-semibold mb-2 whitespace-pre-line line-clamp-2">{current.title}</p>

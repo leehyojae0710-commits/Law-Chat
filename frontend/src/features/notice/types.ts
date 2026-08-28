@@ -23,7 +23,6 @@ export interface NoticePopup {
   popupId: number;
   title: string;
   fileUrl: string;
-  linkUrl?: string;
   altText?: string;
 }
 

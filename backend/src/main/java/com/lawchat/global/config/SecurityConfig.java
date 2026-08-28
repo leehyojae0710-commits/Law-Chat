@@ -92,7 +92,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/precedents/*/bookmark").authenticated()
 
                         // 공지사항/판례 조회 등 비로그인 열람 허용 영역
-                        .requestMatchers(HttpMethod.GET, "/api/notices/**", "/api/precedents/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/notices/**", "/api/precedents/**", "/api/files/**").permitAll()
 
                         // 개발 편의용
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/actuator/health").permitAll()

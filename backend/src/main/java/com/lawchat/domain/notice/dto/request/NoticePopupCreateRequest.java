@@ -17,7 +17,6 @@ public class NoticePopupCreateRequest {
     @NotBlank(message = "이미지 경로는 필수입니다.")
     private String fileUrl;
 
-    private String linkUrl;
     private String altText;
 
     @NotNull(message = "노출 시작 일시는 필수입니다.")
