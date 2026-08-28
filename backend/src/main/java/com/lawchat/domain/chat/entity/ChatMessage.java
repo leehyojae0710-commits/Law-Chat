@@ -1,11 +1,14 @@
 package com.lawchat.domain.chat.entity;
 
-import com.lawchat.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
 
 /**
  * DB: chat_messages
@@ -16,7 +19,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "chat_messages")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ChatMessage extends BaseTimeEntity {
+public class ChatMessage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,6 +40,14 @@ public class ChatMessage extends BaseTimeEntity {
 
     @Column(columnDefinition = "json")
     private String sources; // LegalSource[] 를 JSON 문자열로 저장
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     @Builder
     private ChatMessage(ChatSession session, ChatRole role, String content, String sources) {
