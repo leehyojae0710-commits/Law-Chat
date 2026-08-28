@@ -32,7 +32,7 @@ export const NoticePopup = ({ notices, onCloseAll }: NoticePopupProps) => {
   };
 
   if (!current) return null;
-  console.log(current.fileUrl);
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
       <div className="relative bg-white rounded-xl p-6 max-w-md w-full">
@@ -54,7 +54,9 @@ export const NoticePopup = ({ notices, onCloseAll }: NoticePopupProps) => {
           <div className="flex-1 min-w-0 min-h-[100px] flex flex-col justify-center">
             {current.fileUrl ? (
               <a href={current.linkUrl ?? "#"}>
-                <img src={current.fileUrl} alt={current.altText ?? current.title} className="w-full h-auto max-h-72 object-contain rounded-lg" />
+                <p>{current.altText}</p>
+                <img src={current.fileUrl} className="w-full h-auto max-h-72 object-contain rounded-lg" />
+                <p>{current.title}</p>
               </a>
             ) : (
               <p className="font-semibold mb-2 whitespace-pre-line line-clamp-2">{current.title}</p>
