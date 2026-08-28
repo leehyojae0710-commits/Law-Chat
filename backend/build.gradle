@@ -14,8 +14,8 @@ java {
     }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
+tasks.withType(JavaCompile) {
+    options.compilerArgs << '-parameters'
 }
 tasks.withType(Test).configureEach {
     systemProperty 'file.encoding', 'UTF-8'
