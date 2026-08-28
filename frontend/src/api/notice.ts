@@ -15,6 +15,7 @@ export const getNotices = async (
 
 export const getNotice = async (noticeId: number): Promise<Notice> => {
   const res = await apiClient.get<Notice>(`/notices/${noticeId}`);
+  console.log(res.data);
   return res.data;
 };
 
