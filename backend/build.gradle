@@ -1,19 +1,29 @@
 plugins {
-
-	id 'java'
-	id 'org.springframework.boot' version '4.1.1'
-	id 'io.spring.dependency-management' version '1.1.7'
-	
+    id 'java'
+    id 'eclipse'
+    id 'org.springframework.boot' version '3.5.5'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.lawchat'
 version = '0.0.1-SNAPSHOT'
 
 java {
-
     toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
 
-        languageVersion = JavaLanguageVersion.of(17)
+tasks.withType(Test).configureEach {
+    systemProperty 'file.encoding', 'UTF-8'
+}
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+eclipse {
+    classpath {
+        defaultOutputDir = file('build/classes')
     }
 }
 
@@ -22,66 +32,31 @@ repositories {
 }
 
 dependencies {
-
-    // Boot 4에서 spring-boot-starter-web은 spring-boot-starter-webmvc로 이름이 바뀌었다.
-    // (starter-web은 당장 빌드가 깨지진 않지만 deprecated이므로 새 이름으로 맞춰준다)
-    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-
+    implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-
     implementation 'org.springframework.boot:spring-boot-starter-security'
-
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
-    // ★ 회원가입/로그인 직접 영향 지점 ★
-    // jjwt-jackson은 내부적으로 Jackson 2(com.fasterxml.jackson) API로 직렬화한다.
-    // Boot 4.1은 Jackson 3(tools.jackson)을 기본으로 쓰기 때문에, jjwt-jackson을 그대로 두면
-    // 로그인/회원가입 시 토큰을 만들거나 검증하는 순간(JwtTokenProvider) 클래스 충돌로 500 에러가 난다.
-    // Jackson에 의존하지 않는 jjwt-gson으로 바꿔서 이 충돌 자체를 없앤다.
     runtimeOnly 'io.jsonwebtoken:jjwt-gson:0.12.6'
-
 
     runtimeOnly 'com.mysql:mysql-connector-j'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
-=======
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
-}
-
-repositories {
-	mavenCentral()
-}
-
-dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	runtimeOnly 'com.mysql:mysql-connector-j'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
-	testCompileOnly 'org.projectlombok:lombok'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	testAnnotationProcessor 'org.projectlombok:lombok'
-}
-
-tasks.named('test') {
-	useJUnitPlatform()
-
 }

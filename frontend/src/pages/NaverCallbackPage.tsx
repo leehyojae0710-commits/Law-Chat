@@ -14,12 +14,15 @@ export const NaverCallbackPage = () => {
     calledRef.current = true;
 
     const code = searchParams.get("code");
-    if (!code) {
+    const state = searchParams.get("state"); // 1. URL에서 state 추출 추가
+
+    if (!code || !state) { // 2. state 검증 추가
       setError("네이버 로그인이 취소되었거나 실패했습니다.");
       return;
     }
 
-    naverLogin(code)
+    // 3. naverLogin에 code와 state를 함께 전달 (또는 객체 형태)
+    naverLogin(code, state) 
       .then(() => navigate("/", { replace: true }))
       .catch(() => setError("네이버 로그인 처리 중 오류가 발생했습니다."));
   }, [searchParams, naverLogin, navigate]);

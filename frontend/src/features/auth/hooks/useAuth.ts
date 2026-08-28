@@ -62,9 +62,9 @@ export const useAuth = () => {
     return user;
   }
 
-  const naverLogin = async (code: string) => {
-    const { user, accessToken } = await NaverLoginApi(code); // 백엔드 /auth/kakao 호출
-    setAuth(user, accessToken); // 여기서 로그인 상태(localStorage + zustand) 세팅됨
+  const naverLogin = async (code: string, state: string) => {
+    const { user, accessToken } = await NaverLoginApi(code, state);
+    setAuth(user, accessToken);
     return user;
   }
 

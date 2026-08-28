@@ -162,6 +162,7 @@ public class ChatService {
         try {
             return objectMapper.readValue(sourcesJson, new TypeReference<List<LegalSourceResponse>>() {});
         } catch (JsonProcessingException e) {
+            log.warn("sources JSON 역직렬화 실패: {}", sourcesJson, e);
             return Collections.emptyList();
         }
     }

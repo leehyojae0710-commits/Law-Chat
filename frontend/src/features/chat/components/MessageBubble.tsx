@@ -1,4 +1,96 @@
-export const MessageBubble = () => {
-  // TODO: MessageBubble 구현 예정
-  return <div>MessageBubble (작업 예정)</div>;
+import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { ChatMessage, FeedbackReasonCode } from "../types";
+import { FeedbackModal } from "./FeedbackModal";
+
+interface MessageBubbleProps {
+  message: ChatMessage;
+  onFeedback: (type: "like" | "dislike", reasonCode?: FeedbackReasonCode, detail?: string) => void;
+}
+
+export const MessageBubble = ({ message, onFeedback }: MessageBubbleProps) => {
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const isUser = message.role === "user";
+
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-violet-600 px-5 py-3.5 text-[15px] leading-relaxed text-white">
+          {message.content}
+        </div>
+      </div>
+    );
+  }
+
+  const liked = message.feedback?.type === "like";
+  const disliked = message.feedback?.type === "dislike";
+
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
+        L
+      </div>
+
+      <div className="max-w-[80%] space-y-3">
+        <div className="rounded-2xl rounded-tl-sm bg-slate-100 px-5 py-3.5 text-[15px] leading-relaxed text-slate-800">
+          <div className="prose prose-sm prose-slate max-w-none prose-p:my-1.5 prose-strong:text-slate-900 prose-ul:my-1.5">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+          </div>
+
+          {message.sources && message.sources.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-200 pt-3">
+              {message.sources.map((s) => (
+                <a
+                  key={`${s.lawName}-${s.articleNumber}`}
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-md border border-violet-200 bg-white px-2.5 py-1 text-xs font-medium text-violet-700 hover:bg-violet-50"
+                >
+                  {s.lawName} {s.articleNumber}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 px-1 text-slate-400">
+          <button
+            type="button"
+            onClick={() => onFeedback("like")}
+            aria-pressed={liked}
+            className={`rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-slate-100 ${
+              liked ? "text-violet-600" : ""
+            }`}
+          >
+            👍
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowFeedbackModal(true)}
+            aria-pressed={disliked}
+            className={`rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-slate-100 ${
+              disliked ? "text-red-500" : ""
+            }`}
+          >
+            👎
+          </button>
+          {message.feedback && (
+            <span className="text-xs text-slate-400">피드백을 보내주셔서 감사해요</span>
+          )}
+        </div>
+      </div>
+
+      {showFeedbackModal && (
+        <FeedbackModal
+          onClose={() => setShowFeedbackModal(false)}
+          onSubmit={(reasonCode, detail) => {
+            onFeedback("dislike", reasonCode, detail);
+            setShowFeedbackModal(false);
+          }}
+        />
+      )}
+    </div>
+  );
 };

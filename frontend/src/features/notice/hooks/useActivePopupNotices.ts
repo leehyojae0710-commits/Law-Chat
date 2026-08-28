@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Notice } from "../types";
+import type { NoticePopup } from "../types";
 import { mockPopupNotices } from "../data";
 import { getPopupNotices } from "../../../api/notice";
 
@@ -7,7 +7,7 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK_NOTICE === "true";
 const DISMISS_KEY = "popupDismissedUntil";
 
 export const useActivePopupNotices = () => {
-  const [notices, setNotices] = useState<Notice[]>([]);
+  const [notices, setNotices] = useState<NoticePopup[]>([]);
 
   useEffect(() => {
     if (isPopupDismissed()) {
@@ -16,14 +16,7 @@ export const useActivePopupNotices = () => {
     }
 
     if (USE_MOCK) {
-      const today = new Date();
-      const filtered = mockPopupNotices.filter((n) => {
-        if (!n.popupStartDate || !n.popupEndDate) return false;
-        const start = new Date(n.popupStartDate);
-        const end = new Date(n.popupEndDate);
-        return today >= start && today <= end;
-      });
-      setNotices(filtered);
+      setNotices(mockPopupNotices);
       return;
     }
 

@@ -15,6 +15,9 @@ import jakarta.validation.constraints.Size;
  * 검증에 실패하면 MethodArgumentNotValidException 이 발생하고,
  * GlobalExceptionHandler 가 이를 잡아 400 응답으로 변환한다.
  * → 서비스 코드에 "값이 비었는지" 검사 코드를 쓰지 않아도 된다.
+ *
+ * ★ phone 추가: 아이디 찾기/비밀번호 재설정 인증 수단으로 쓰기 위해 필수값으로 받는다.
+ *   하이픈 포함/미포함 둘 다 허용하고, 서비스 레이어에서 숫자만 남기도록 정규화한다.
  */
 public record SignupRequest(
 
@@ -34,6 +37,10 @@ public record SignupRequest(
 
         @NotBlank(message = "닉네임은 필수입니다.")
         @Size(min = 2, max = 50, message = "닉네임은 2자 이상 50자 이하여야 합니다.")
-        String nickname
+        String nickname,
+
+        @NotBlank(message = "전화번호는 필수입니다.")
+        @Pattern(regexp = "^01[0-9]-?\\d{3,4}-?\\d{4}$", message = "전화번호 형식이 올바르지 않습니다. (예: 01012345678)")
+        String phone
 ) {
 }

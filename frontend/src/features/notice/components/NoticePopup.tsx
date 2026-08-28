@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import type { Notice } from "../types";
+import type { NoticePopup as NoticePopupType } from "../types";
 import { dismissPopupForDays } from "../hooks/useActivePopupNotices";
 
 interface NoticePopupProps {
-  notices: Notice[];
+  notices: NoticePopupType[];
   onCloseAll: () => void;
 }
 
@@ -51,14 +51,13 @@ export const NoticePopup = ({ notices, onCloseAll }: NoticePopupProps) => {
             </button>
           )}
 
-          <div className="flex-1 min-w-0 min-h-[88px] flex flex-col justify-center">
-            {current.imageUrl ? (
-              <img src={current.imageUrl} alt={current.title} className="w-full h-auto max-h-72 object-contain rounded-lg" />
+          <div className="flex-1 min-w-0 min-h-[100px] flex flex-col justify-center">
+            {current.fileUrl ? (
+              <a href={current.linkUrl ?? "#"}>
+                <img src={current.fileUrl} alt={current.altText ?? current.title} className="w-full h-auto max-h-72 object-contain rounded-lg" />
+              </a>
             ) : (
-              <>
-                <p className="font-semibold mb-2 whitespace-pre-line line-clamp-2">{current.title}</p>
-                <p className="text-xs text-gray-400 mb-4">{current.date} 게시</p>
-              </>
+              <p className="font-semibold mb-2 whitespace-pre-line line-clamp-2">{current.title}</p>
             )}
           </div>
 
@@ -75,7 +74,7 @@ export const NoticePopup = ({ notices, onCloseAll }: NoticePopupProps) => {
           <div className="flex items-center justify-center gap-2 mb-4">
             {notices.map((n, i) => (
               <button
-                key={n.id}
+                key={n.popupId}
                 onClick={() => goTo(i)}
                 aria-label={`${i + 1}번째 공지로 이동`}
                 className={`w-2 h-2 rounded-full transition-colors ${i === index ? "bg-violet-600" : "bg-slate-200 hover:bg-slate-300"}`}

@@ -3,19 +3,22 @@ import {
   getAdminNotices,
   createNotice,
   deleteNotice,
-  type Notice,
+  toggleNoticePin,
 } from "../../../api/admin";
+import type { NoticeListItem, NoticeCategory } from "../../notice/types";
+import { NOTICE_CATEGORY_LABELS, formatNoticeDate } from "../../notice/types";
 
 export const NoticeEditor = () => {
-  const [notices, setNotices] = useState<Notice[]>([]);
+  const [notices, setNotices] = useState<NoticeListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [category, setCategory] = useState<NoticeCategory>("GENERAL");
 
   const refetch = () => {
     setIsLoading(true);
     getAdminNotices()
-      .then(setNotices)
+      .then((res) => setNotices(res.content))
       .finally(() => setIsLoading(false));
   };
 
@@ -25,14 +28,19 @@ export const NoticeEditor = () => {
 
   const handleCreate = async () => {
     if (!title.trim() || !content.trim()) return;
-    await createNotice({ title, content, category: "서비스 업데이트", isVisible: true });
+    await createNotice({ title, content, category });
     setTitle("");
     setContent("");
     refetch();
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteNotice(id);
+  const handleDelete = async (noticeId: number) => {
+    await deleteNotice(noticeId);
+    refetch();
+  };
+
+  const handleTogglePin = async (noticeId: number) => {
+    await toggleNoticePin(noticeId);
     refetch();
   };
 
@@ -42,6 +50,15 @@ export const NoticeEditor = () => {
     <div className="space-y-6">
       <div className="border rounded-xl p-4 space-y-3">
         <p className="font-semibold text-sm">새 공지 작성</p>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as NoticeCategory)}
+          className="w-full border rounded-lg px-3 py-2 text-sm"
+        >
+          {Object.entries(NOTICE_CATEGORY_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -65,14 +82,24 @@ export const NoticeEditor = () => {
 
       <div className="border rounded-xl divide-y">
         {notices.map((n) => (
-          <div key={n.id} className="flex items-center justify-between p-4">
+          <div key={n.noticeId} className="flex items-center justify-between p-4">
             <div>
-              <p className="text-sm font-medium">{n.title}</p>
-              <span className="text-xs text-gray-400">{n.category}</span>
+              <div className="flex items-center gap-2">
+                {n.isPinned && <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded">고정</span>}
+                <p className="text-sm font-medium">{n.title}</p>
+              </div>
+              <span className="text-xs text-gray-400">
+                {NOTICE_CATEGORY_LABELS[n.category]} · {formatNoticeDate(n.createdAt)}
+              </span>
             </div>
-            <button onClick={() => handleDelete(n.id)} className="text-xs text-red-500">
-              삭제
-            </button>
+            <div className="flex gap-3">
+              <button onClick={() => handleTogglePin(n.noticeId)} className="text-xs text-violet-600">
+                {n.isPinned ? "고정 해제" : "고정"}
+              </button>
+              <button onClick={() => handleDelete(n.noticeId)} className="text-xs text-red-500">
+                삭제
+              </button>
+            </div>
           </div>
         ))}
       </div>
