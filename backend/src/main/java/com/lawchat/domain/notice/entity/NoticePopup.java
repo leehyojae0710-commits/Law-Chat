@@ -27,9 +27,6 @@ public class NoticePopup {
     @Column(name = "file_url", length = 500, nullable = false)
     private String fileUrl;
 
-    @Column(name = "link_url", length = 500)
-    private String linkUrl;
-
     @Column(name = "alt_text", length = 255)
     private String altText;
 
@@ -43,26 +40,25 @@ public class NoticePopup {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    private NoticePopup(String title, String fileUrl, String linkUrl, String altText,
+    private NoticePopup(String title, String fileUrl, String altText,
                          LocalDateTime startDate, LocalDateTime endDate) {
         validatePeriod(startDate, endDate);
         this.title = title;
         this.fileUrl = fileUrl;
-        this.linkUrl = linkUrl;
         this.altText = altText;
         this.startDate = startDate;
         this.endDate = endDate;
     }
 
-    public static NoticePopup create(String title, String fileUrl, String linkUrl, String altText,
+    public static NoticePopup create(String title, String fileUrl, String altText,
                                       LocalDateTime startDate, LocalDateTime endDate) {
-        return new NoticePopup(title, fileUrl, linkUrl, altText, startDate, endDate);
+        return new NoticePopup(title, fileUrl, altText, startDate, endDate);
     }
 
     /**
      * null 로 넘어온 필드는 변경하지 않는다. 기간은 둘 중 하나만 바뀌어도 최종 조합을 재검증.
      */
-    public void update(String title, String fileUrl, String linkUrl, String altText,
+    public void update(String title, String fileUrl, String altText,
                        LocalDateTime startDate, LocalDateTime endDate) {
         LocalDateTime newStart = (startDate != null) ? startDate : this.startDate;
         LocalDateTime newEnd = (endDate != null) ? endDate : this.endDate;
@@ -73,9 +69,6 @@ public class NoticePopup {
         }
         if (fileUrl != null) {
             this.fileUrl = fileUrl;
-        }
-        if (linkUrl != null) {
-            this.linkUrl = linkUrl;
         }
         if (altText != null) {
             this.altText = altText;
