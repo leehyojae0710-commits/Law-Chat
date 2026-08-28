@@ -1,8 +1,9 @@
-import { useState } from "react";
+interface AiSimilaritySwitchProps {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}
 
-export const AiSimilaritySwitch = () => {
-  const [on, setOn] = useState(true);
-
+export const AiSimilaritySwitch = ({ checked, onChange }: AiSimilaritySwitchProps) => {
   return (
     <div className="flex items-center justify-between border rounded-lg p-4">
       <div>
@@ -12,12 +13,12 @@ export const AiSimilaritySwitch = () => {
         </p>
       </div>
       <button
-        onClick={() => setOn(!on)}
-        className={`w-11 h-6 rounded-full transition ${on ? "bg-purple-600" : "bg-gray-300"}`}
+        onClick={() => onChange(!checked)}
+        className={`w-11 h-6 rounded-full transition ${checked ? "bg-purple-600" : "bg-gray-300"}`}
       >
         <span
           className={`block w-5 h-5 bg-white rounded-full transition-transform ${
-            on ? "translate-x-5" : "translate-x-0.5"
+            checked ? "translate-x-5" : "translate-x-0.5"
           }`}
         />
       </button>
