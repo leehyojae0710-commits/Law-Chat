@@ -21,6 +21,7 @@ export const NoticeListItem = ({ notice }: NoticeListItemProps) => {
       try {
         const detail = await getNotice(notice.noticeId);
         setContent(detail.content);
+        console.log(detail.content);
       } catch {
         setContent("내용을 불러오지 못했습니다.");
       } finally {
