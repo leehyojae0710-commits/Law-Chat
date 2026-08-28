@@ -32,7 +32,7 @@ export const NoticePopup = ({ notices, onCloseAll }: NoticePopupProps) => {
   };
 
   if (!current) return null;
-
+  console.log(current.fileUrl);
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
       <div className="relative bg-white rounded-xl p-6 max-w-md w-full">
