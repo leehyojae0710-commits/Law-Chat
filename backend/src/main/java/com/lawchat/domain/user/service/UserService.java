@@ -43,15 +43,21 @@ public class UserService {
     @Value("${oauth.kakao.client-secret:}")
     private String kakaoClientSecret;
 
+    @Value("${oauth.kakao.redirect-uri:http://localhost:5173/kakao/OAuth}")
+    private String defaultKakaoRedirectUri;
+
     @Value("${oauth.naver.client-id:}")
     private String naverClientId;
 
     @Value("${oauth.naver.client-secret:}")
     private String naverClientSecret;
 
+    @Value("${oauth.naver.redirect-uri:http://localhost:5173/naver/OAuth}")
+    private String defaultNaverRedirectUri;
+
     public UserService(UserRepository userRepository,
-                        PasswordEncoder passwordEncoder,
-                        JwtTokenProvider jwtTokenProvider) {
+                       PasswordEncoder passwordEncoder,
+                       JwtTokenProvider jwtTokenProvider) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -67,7 +73,6 @@ public class UserService {
             throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
-        // phone은 SignupRequest에서 @NotBlank가 아니라 선택 항목이라 null로 올 수 있다.
         String rawPhone = request.phone();
         String cleanPhone = (rawPhone != null && !rawPhone.isBlank())
                 ? rawPhone.replaceAll("[^0-9]", "")
@@ -111,10 +116,14 @@ public class UserService {
 
     @Transactional
     public AuthResponse kakaoLoginWithCode(String code, String redirectUri) {
+        String finalRedirectUri = (redirectUri != null && !redirectUri.isBlank())
+                ? redirectUri
+                : defaultKakaoRedirectUri;
+
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add("grant_type", "authorization_code");
         params.add("client_id", kakaoClientId);
-        params.add("redirect_uri", redirectUri);
+        params.add("redirect_uri", finalRedirectUri);
         params.add("code", code);
         if (kakaoClientSecret != null && !kakaoClientSecret.isBlank()) {
             params.add("client_secret", kakaoClientSecret);
@@ -173,12 +182,17 @@ public class UserService {
 
     @Transactional
     public AuthResponse naverLoginWithCode(String code, String state, String redirectUri) {
+        String finalRedirectUri = (redirectUri != null && !redirectUri.isBlank())
+                ? redirectUri
+                : defaultNaverRedirectUri;
+
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add("grant_type", "authorization_code");
         params.add("client_id", naverClientId);
         params.add("client_secret", naverClientSecret);
         params.add("code", code);
         params.add("state", state);
+        params.add("redirect_uri", finalRedirectUri);
 
         Map<String, Object> tokenResponse;
         try {
@@ -279,12 +293,8 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
-    /**
-     * 소셜 로그인 공통 처리.
-     * User.createSocialUser 실제 시그니처: (socialId, socialProvider, nickname, profileImg, email)
-     */
     private AuthResponse processSocialLogin(SocialProvider provider, String socialId,
-                                             String email, String nickname, String profileImg) {
+                                           String email, String nickname, String profileImg) {
         User user = userRepository.findBySocialProviderAndSocialId(provider, socialId)
                 .map(existing -> {
                     existing.syncSocialProfile(profileImg);
@@ -305,10 +315,6 @@ public class UserService {
         return issueAuthResponse(user);
     }
 
-    /**
-     * AuthResponse 실제 형태: (tokenType, accessToken, expiresIn, user) — refreshToken 필드 자체가 없다.
-     * JwtTokenProvider 에도 createRefreshToken 메서드가 없다.
-     */
     private AuthResponse issueAuthResponse(User user) {
         String accessToken = jwtTokenProvider.createAccessToken(user);
         long expiresIn = jwtTokenProvider.getExpiresInSeconds();
