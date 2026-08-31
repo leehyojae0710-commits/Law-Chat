@@ -46,6 +46,9 @@ export const createNotice = async (notice: {
   title: string;
   content: string;
   fileUrl?: string;
+  createPopup: boolean;
+  popupStartDate?: string; // createPopup이 true일 때만 필요, ISO 문자열
+  popupEndDate?: string;   // createPopup이 true일 때만 필요, ISO 문자열
 }): Promise<number> => {
   const res = await apiClient.post<number>("/admin/notices", notice);
   return res.data;
@@ -53,7 +56,11 @@ export const createNotice = async (notice: {
 
 export const updateNotice = async (
   noticeId: number,
-  notice: Partial<Pick<Notice, "title" | "content" | "fileUrl">>
+  notice: Partial<Pick<Notice, "title" | "content" | "fileUrl">> & {
+    createPopup: boolean;
+    popupStartDate?: string;
+    popupEndDate?: string;
+  }
 ): Promise<void> => {
   await apiClient.patch(`/admin/notices/${noticeId}`, notice);
 };
@@ -80,6 +87,7 @@ export const createPopup = async (popup: {
   altText?: string;
   startDate: string; // ISO
   endDate: string;   // ISO
+  noticeId?: number; // 이 팝업이 어떤 공지에서 만들어졌는지 백엔드에 같이 저장
 }): Promise<number> => {
   const res = await apiClient.post<number>("/admin/notices/popups", popup);
   return res.data;

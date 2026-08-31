@@ -6,14 +6,12 @@ import {
   deleteNotice,
   toggleNoticePin,
   uploadNoticeFile,
-  createPopup,
   getAdminPopups,
   deletePopup,
 } from "../../../api/admin";
 import { getNotice } from "../../../api/notice";
 import type { NoticeListItem, NoticeCategory, NoticePopupAdmin } from "../../notice/types";
 import { NOTICE_CATEGORY_LABELS, formatNoticeDate } from "../../notice/types";
-import { fa } from "zod/locales";
 
 const PAGE_SIZE = 10;
 
@@ -24,6 +22,9 @@ const toDateInputValue = (d: Date) => {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 };
+
+// ISO 문자열("2026-09-01T00:00:00")을 <input type="date"> 형식(YYYY-MM-DD)으로
+const isoToDateInputValue = (iso: string) => iso.slice(0, 10);
 
 // 날짜 문자열(YYYY-MM-DD)을 하루의 시작/끝 시각을 포함한 ISO 문자열로 변환
 const toIsoStart = (dateStr: string) => new Date(`${dateStr}T00:00:00`).toISOString();
@@ -176,7 +177,12 @@ export const NoticeEditor = () => {
       setPendingFile(null);
       setPreviewUrl(detail.fileUrl);
       setExistingFileName(extractFileName(detail.fileUrl));
-      setShowAsPopup(false);
+      // 공지 상세 응답의 팝업 정보로 체크박스/날짜를 복원합니다.
+      setShowAsPopup(!!detail.hasPopup);
+      if (detail.hasPopup && detail.popupStartDate && detail.popupEndDate) {
+        setPopupStart(isoToDateInputValue(detail.popupStartDate));
+        setPopupEnd(isoToDateInputValue(detail.popupEndDate));
+      }
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error("공지 상세 조회 실패:", err);
@@ -188,7 +194,9 @@ export const NoticeEditor = () => {
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) return;
-    if (showAsPopup && !pendingFile) {
+    // 팝업 이미지는 공지 이미지를 그대로 쓰므로, 새로 고른 파일이 없어도
+    // 기존 이미지가 있으면 팝업으로 켤 수 있습니다.
+    if (showAsPopup && !pendingFile && !existingFileName) {
       setFormError("팝업으로 노출하려면 이미지를 먼저 선택해주세요.");
       return;
     }
@@ -207,6 +215,16 @@ export const NoticeEditor = () => {
         uploadedFileName = uploaded.fileName;
       }
 
+      // 팝업 켜고 끄는 값과 기간은 공지 등록/수정 요청에 함께 실어 보냅니다.
+      // (백엔드가 noticeId 기준으로 팝업을 직접 만들고 연결해줍니다.)
+      const popupFields = showAsPopup
+        ? {
+            createPopup: true as const,
+            popupStartDate: toIsoStart(popupStart),
+            popupEndDate: toIsoEnd(popupEnd),
+          }
+        : { createPopup: false as const };
+
       if (editingId) {
         // 새 이미지를 선택했으면 그 파일명을, 아니면 기존 파일명을 그대로 보냅니다.
         // (백엔드가 수정 시에도 fileUrl을 필수로 요구하기 때문에, 재업로드 없이
@@ -216,23 +234,14 @@ export const NoticeEditor = () => {
           title,
           content,
           ...(fileUrlToSend ? { fileUrl: fileUrlToSend } : {}),
+          ...popupFields,
         });
       } else {
-        await createNotice({ title, content, category, fileUrl: uploadedFileName });
-      }
-
-      if (showAsPopup && uploadedFileName) {
-        await createPopup({
-          title,
-          fileUrl: uploadedFileName,
-          altText: title,
-          startDate: toIsoStart(popupStart),
-          endDate: toIsoEnd(popupEnd),
-        });
-        refetchPopups();
+        await createNotice({ title, content, category, fileUrl: uploadedFileName, ...popupFields });
       }
 
       resetForm();
+      refetchPopups();
       if (page === 0) {
         refetch(0);
       } else {
@@ -247,9 +256,20 @@ export const NoticeEditor = () => {
   };
 
   const handleDelete = async (noticeId: number) => {
+    // 백엔드가 noticeId로 팝업을 연결 관리하므로, 공지를 지우면 연결된 팝업도
+    // 함께 삭제됩니다(cascade). 프론트는 그 사실을 미리 알려주기만 하면 됩니다.
+    const linkedPopup = popups.find((p) => p.noticeId === noticeId);
+    if (linkedPopup) {
+      const ok = window.confirm(
+        `이 공지를 삭제하면 연결된 팝업("${linkedPopup.title}")도 함께 삭제됩니다. 계속할까요?`
+      );
+      if (!ok) return;
+    }
+
     await deleteNotice(noticeId);
     if (editingId === noticeId) resetForm();
     refetch(page);
+    if (linkedPopup) refetchPopups();
   };
 
   const handleTogglePin = async (noticeId: number) => {
@@ -344,7 +364,7 @@ export const NoticeEditor = () => {
               <input
                 type="date"
                 value={popupStart}
-                min={today}
+                min={popupStart < today ? popupStart : today}
                 onChange={(e) => setPopupStart(e.target.value)}
                 className="border rounded-lg px-2 py-1.5 text-sm"
               />
@@ -355,8 +375,8 @@ export const NoticeEditor = () => {
                 onChange={(e) => setPopupEnd(e.target.value)}
                 className="border rounded-lg px-2 py-1.5 text-sm"
               />
-              {!pendingFile && (
-                <span className="text-xs text-red-500">팝업 노출에는 새 이미지 선택이 필요해요</span>
+              {!pendingFile && !existingFileName && (
+                <span className="text-xs text-red-500">팝업 노출에는 이미지가 필요해요</span>
               )}
             </div>
           )}
@@ -408,6 +428,11 @@ export const NoticeEditor = () => {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs px-2 py-0.5 rounded ${statusClass}`}>{statusLabel}</span>
+                          {p.linkedToNotice && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
+                              공지 연동
+                            </span>
+                          )}
                           <p className="text-sm font-medium truncate">{p.title}</p>
                         </div>
                         <span className="text-xs text-gray-400">
