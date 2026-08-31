@@ -89,16 +89,7 @@ public class NoticeService {
         Notice saved = noticeRepository.save(notice);
 
         if (request.isPopupRequested()) {
-            createLinkedPopup(
-                    saved,
-                    request.getPopupTitle(),
-                    request.getPopupFileUrl(),
-                    request.getPopupAltText(),
-                    request.getPopupStartDate(),
-                    request.getPopupEndDate(),
-                    request.getTitle(),
-                    request.getFileUrl()
-            );
+            createLinkedPopup(saved, request.getPopupStartDate(), request.getPopupEndDate());
         }
         return saved.getNoticeId();
     }
@@ -171,11 +162,11 @@ public class NoticeService {
                 noticePopupRepository.findByNotice_NoticeId(notice.getNoticeId());
 
         if (existing.isPresent()) {
-            // 기간을 안 보냈으면 기존 기간을 유지한다 (제목/이미지만 바꾸는 경우)
+            // 제목/이미지는 공지를 따라가고, 기간을 안 보냈으면 기존 기간을 유지한다.
             existing.get().update(
-                    request.getPopupTitle(),
-                    request.getPopupFileUrl(),
-                    request.getPopupAltText(),
+                    notice.getTitle(),
+                    notice.getFileUrl(),
+                    notice.getTitle(),
                     request.getPopupStartDate(),
                     request.getPopupEndDate()
             );
@@ -186,39 +177,29 @@ public class NoticeService {
         if (request.getPopupStartDate() == null || request.getPopupEndDate() == null) {
             throw new BusinessException(ErrorCode.INVALID_POPUP_PERIOD);
         }
-        createLinkedPopup(
-                notice,
-                request.getPopupTitle(),
-                request.getPopupFileUrl(),
-                request.getPopupAltText(),
-                request.getPopupStartDate(),
-                request.getPopupEndDate(),
-                notice.getTitle(),
-                notice.getFileUrl()
-        );
+        createLinkedPopup(notice, request.getPopupStartDate(), request.getPopupEndDate());
     }
 
     /**
      * 연동 팝업 생성.
-     * 팝업 제목/이미지를 따로 안 보내면 공지의 값을 그대로 쓴다.
-     * (관리자가 팝업용으로 따로 준비하지 않는 경우가 대부분이다)
+     * 팝업의 제목·이미지는 항상 공지의 값을 그대로 쓴다.
+     * 관리자 화면에 팝업 전용 입력란이 없기 때문에 따로 받지 않는다.
      */
-    private void createLinkedPopup(Notice notice, String popupTitle, String popupFileUrl,
-                                   String popupAltText, LocalDateTime startDate,
-                                   LocalDateTime endDate, String fallbackTitle,
-                                   String fallbackFileUrl) {
-        String title = (popupTitle != null && !popupTitle.isBlank()) ? popupTitle : fallbackTitle;
-        String fileUrl = (popupFileUrl != null && !popupFileUrl.isBlank())
-                ? popupFileUrl
-                : fallbackFileUrl;
-
-        // 팝업은 이미지가 필수다. 공지 첨부도 없이 팝업만 요청하면 잘못된 입력.
-        if (fileUrl == null || fileUrl.isBlank()) {
+    private void createLinkedPopup(Notice notice, LocalDateTime startDate, LocalDateTime endDate) {
+        // 팝업은 이미지가 필수다. 공지 첨부 없이 팝업만 요청하면 잘못된 입력.
+        if (notice.getFileUrl() == null || notice.getFileUrl().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_FILE);
         }
 
         noticePopupRepository.save(
-                NoticePopup.createForNotice(notice, title, fileUrl, popupAltText, startDate, endDate)
+                NoticePopup.createForNotice(
+                        notice,
+                        notice.getTitle(),      // 팝업 제목 = 공지 제목
+                        notice.getFileUrl(),    // 팝업 이미지 = 공지 첨부
+                        notice.getTitle(),      // altText = 공지 제목
+                        startDate,
+                        endDate
+                )
         );
     }
 

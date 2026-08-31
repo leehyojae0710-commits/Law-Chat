@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
  *
  * primitive boolean 으로 두면 "안 보냄"과 "false 로 보냄"을 구분할 수 없어
  * 제목만 수정해도 팝업이 꺼져버린다. 그래서 여기서만 Boolean 을 쓴다.
+ *
+ * 팝업 제목·이미지는 받지 않는다. 공지 제목과 공지 첨부를 그대로 따라간다.
  */
 @Getter
 @NoArgsConstructor
@@ -27,12 +29,6 @@ public class NoticeUpdateRequest {
     // ---------- 팝업 설정 ----------
 
     private Boolean createPopup;
-
-    private String popupTitle;
-
-    private String popupFileUrl;
-
-    private String popupAltText;
 
     private LocalDateTime popupStartDate;
 

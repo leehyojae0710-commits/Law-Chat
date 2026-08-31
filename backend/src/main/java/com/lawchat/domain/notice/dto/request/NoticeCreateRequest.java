@@ -14,6 +14,9 @@ import java.time.LocalDateTime;
  * "이 공지를 팝업으로도 노출하기" 체크박스를 켜면 popup* 필드가 함께 온다.
  * 공지 등록과 팝업 등록을 두 번 호출하지 않고 한 요청으로 처리해야
  * 팝업이 어느 공지 소속인지 기록할 수 있고, 중간 실패 시 함께 롤백된다.
+ *
+ * 팝업 제목과 이미지는 받지 않는다. 관리자 화면에 별도 입력란이 없고
+ * 공지의 제목·첨부 이미지를 그대로 쓰기 때문이다. (NoticeService 가 채운다)
  */
 @Getter
 @NoArgsConstructor
@@ -35,14 +38,6 @@ public class NoticeCreateRequest {
 
     /** true 일 때만 팝업을 함께 만든다. 체크박스와 1:1 대응. */
     private boolean createPopup;
-
-    /** 미지정 시 공지 제목을 그대로 쓴다. */
-    private String popupTitle;
-
-    /** 미지정 시 공지 첨부 이미지(fileUrl)를 그대로 쓴다. */
-    private String popupFileUrl;
-
-    private String popupAltText;
 
     private LocalDateTime popupStartDate;
 
