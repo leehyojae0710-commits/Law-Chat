@@ -35,9 +35,9 @@ export const answerInquiry = async (inquiryId: string, answer: string): Promise<
 // ===== 공지사항 관리 =====
 import type { Notice, NoticeCategory, NoticeListItem, NoticePopup, NoticePopupAdmin, PageResponse } from "../features/notice/types";
 
-// 백엔드에 admin 전용 목록 API가 없어서, 공개 목록 API를 재사용합니다.
-export const getAdminNotices = async (page = 0, size = 50): Promise<PageResponse<NoticeListItem>> => {
-  const res = await apiClient.get<PageResponse<NoticeListItem>>("/notices", { params: { page, size } });
+
+export const getAdminNotices = async (page = 0, size = 10): Promise<PageResponse<NoticeListItem>> => {
+  const res = await apiClient.get<PageResponse<NoticeListItem>>("/admin/notices", { params: { page, size } });
   return res.data;
 };
 
@@ -98,11 +98,16 @@ export const deletePopup = async (popupId: number): Promise<void> => {
 
 // ===== 파일 업로드 (공지/팝업 이미지·첨부용) =====
 
-export const uploadNoticeFile = async (file: File): Promise<string> => {
+export interface UploadedNoticeFile {
+  fileName: string; // 공지/팝업 등록 요청의 fileUrl 필드에 그대로 넣을 값
+  fileUrl: string;  // 업로드 직후 미리보기(<img src>)에만 사용
+}
+
+export const uploadNoticeFile = async (file: File): Promise<UploadedNoticeFile> => {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await apiClient.post<{ fileUrl: string }>("/admin/notices/upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return res.data.fileUrl;
+  // Content-Type을 수동으로 지정하지 않음 — axios/브라우저가 FormData를 보고
+  // boundary가 포함된 정확한 multipart Content-Type을 자동으로 설정하도록 둠.
+  const res = await apiClient.post<UploadedNoticeFile>("/admin/notices/upload", formData);
+  return res.data;
 };

@@ -20,7 +20,9 @@ tasks.withType(Test).configureEach {
 tasks.withType(Javadoc).configureEach {
     options.encoding = 'UTF-8'
 }
-
+tasks.withType(JavaCompile) {
+    options.compilerArgs << '-parameters'
+}
 eclipse {
     classpath {
         defaultOutputDir = file('build/classes')
