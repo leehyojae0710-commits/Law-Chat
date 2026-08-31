@@ -7,10 +7,13 @@ import {
   toggleNoticePin,
   uploadNoticeFile,
   createPopup,
+  getAdminPopups,
+  deletePopup,
 } from "../../../api/admin";
 import { getNotice } from "../../../api/notice";
-import type { NoticeListItem, NoticeCategory } from "../../notice/types";
+import type { NoticeListItem, NoticeCategory, NoticePopupAdmin } from "../../notice/types";
 import { NOTICE_CATEGORY_LABELS, formatNoticeDate } from "../../notice/types";
+import { fa } from "zod/locales";
 
 const PAGE_SIZE = 10;
 
@@ -35,6 +38,7 @@ export const NoticeEditor = () => {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<NoticeCategory>("GENERAL");
 
+
   // 수정 모드: null이면 새 글 작성, 아니면 해당 noticeId를 수정 중
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -44,7 +48,22 @@ export const NoticeEditor = () => {
   // previewUrl: 미리보기 전용. 새 파일 선택 시 로컬 blob 경로(URL.createObjectURL), 수정 모드 진입 시 서버의 기존 이미지 URL
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
+  // existingFileName: 수정 모드 진입 시 서버에 이미 저장돼있는 파일명.
+  // 새 이미지를 선택하지 않고 저장할 때, 재업로드 없이 그대로 다시 보내기 위해 씁니다.
+  const [existingFileName, setExistingFileName] = useState<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // URL에서 파일명만 뽑아냅니다. (예: .../uploads/abc123.jpg → abc123.jpg)
+  const extractFileName = (url: string | undefined) => {
+    if (!url) return undefined;
+    try {
+      const path = new URL(url).pathname;
+      return path.split("/").pop() || undefined;
+    } catch {
+      // 절대 URL이 아닌 경우(상대 경로 등)도 대비
+      return url.split("/").pop() || undefined;
+    }
+  };
 
   // 팝업 노출 옵션
   const [showAsPopup, setShowAsPopup] = useState(false);
@@ -55,10 +74,31 @@ export const NoticeEditor = () => {
     return toDateInputValue(d);
   });
 
-  const today =new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // 팝업 목록 (현재 노출 중 / 예정 / 종료된 것 모두 포함해서 받아온 뒤 화면에서 구분)
+  const [popups, setPopups] = useState<NoticePopupAdmin[]>([]);
+  const [isLoadingPopups, setIsLoadingPopups] = useState(true);
+
+  const refetchPopups = () => {
+    setIsLoadingPopups(true);
+    getAdminPopups()
+      .then(setPopups)
+      .catch((err) => console.error("팝업 목록 조회 실패:", err))
+      .finally(() => setIsLoadingPopups(false));
+  };
+
+  useEffect(() => {
+    refetchPopups();
+  }, []);
+
+  const handleDeletePopup = async (popupId: number) => {
+    await deletePopup(popupId);
+    refetchPopups();
+  };
 
   const refetch = (targetPage = page) => {
     setIsLoading(true);
@@ -93,6 +133,8 @@ export const NoticeEditor = () => {
     revokeIfBlob(previewUrl);
     setPendingFile(file);
     setPreviewUrl(URL.createObjectURL(file));
+    // 새 파일을 골랐으니 기존 파일명 표시는 더 이상 필요 없음
+    setExistingFileName(undefined);
     setFormError(null);
   };
 
@@ -100,6 +142,7 @@ export const NoticeEditor = () => {
     revokeIfBlob(previewUrl);
     setPendingFile(null);
     setPreviewUrl(undefined);
+    setExistingFileName(undefined);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -111,6 +154,7 @@ export const NoticeEditor = () => {
     revokeIfBlob(previewUrl);
     setPendingFile(null);
     setPreviewUrl(undefined);
+    setExistingFileName(undefined);
     setShowAsPopup(false);
     setFormError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -131,6 +175,7 @@ export const NoticeEditor = () => {
       // 기존 이미지를 건드리지 않고 그대로 유지할 수 있습니다.
       setPendingFile(null);
       setPreviewUrl(detail.fileUrl);
+      setExistingFileName(extractFileName(detail.fileUrl));
       setShowAsPopup(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
@@ -163,12 +208,14 @@ export const NoticeEditor = () => {
       }
 
       if (editingId) {
-        // 새 이미지를 선택했을 때만 fileUrl 필드를 같이 보냅니다.
-        // 안 보내면 기존 이미지가 그대로 유지됩니다.
+        // 새 이미지를 선택했으면 그 파일명을, 아니면 기존 파일명을 그대로 보냅니다.
+        // (백엔드가 수정 시에도 fileUrl을 필수로 요구하기 때문에, 재업로드 없이
+        // existingFileName을 재사용해서 저장 폴더에 중복 파일이 쌓이는 걸 방지합니다.)
+        const fileUrlToSend = uploadedFileName ?? existingFileName;
         await updateNotice(editingId, {
           title,
           content,
-          ...(uploadedFileName ? { fileUrl: uploadedFileName } : {}),
+          ...(fileUrlToSend ? { fileUrl: fileUrlToSend } : {}),
         });
       } else {
         await createNotice({ title, content, category, fileUrl: uploadedFileName });
@@ -182,6 +229,7 @@ export const NoticeEditor = () => {
           startDate: toIsoStart(popupStart),
           endDate: toIsoEnd(popupEnd),
         });
+        refetchPopups();
       }
 
       resetForm();
@@ -261,6 +309,11 @@ export const NoticeEditor = () => {
               onChange={handleFileChange}
               className="w-full text-sm file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-violet-50 file:text-violet-600 hover:file:bg-violet-100"
             />
+            {/* <input type="file">는 브라우저 보안 정책상 코드로 파일명을 채워 넣을 수 없어서,
+                기존 이미지가 있을 때는 이렇게 별도 텍스트로 파일명을 보여줍니다. */}
+            {existingFileName && !pendingFile && (
+              <p className="mt-1 text-xs text-gray-400">현재 이미지: {existingFileName}</p>
+            )}
           </div>
           {previewUrl && (
             <div className="relative inline-block">
@@ -320,6 +373,61 @@ export const NoticeEditor = () => {
         </button>
       </div>
 
+      <div className="border rounded-xl p-4 space-y-3">
+        <p className="font-semibold text-sm">팝업 노출 현황</p>
+        {isLoadingPopups && <p className="text-sm text-gray-400">불러오는 중...</p>}
+        {!isLoadingPopups && popups.length === 0 && (
+          <p className="text-sm text-gray-400">등록된 팝업이 없습니다.</p>
+        )}
+        {!isLoadingPopups && popups.length > 0 && (
+          <div className="divide-y">
+            {popups
+              .slice()
+              .sort((a, b) => {
+                // 노출중인 것 먼저, 그 다음 시작일이 가까운 순
+                if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+                return a.startDate.localeCompare(b.startDate);
+              })
+              .map((p) => {
+                const now = new Date();
+                const isUpcoming = !p.isActive && new Date(p.startDate) > now;
+                const statusLabel = p.isActive ? "노출중" : isUpcoming ? "예정" : "종료";
+                const statusClass = p.isActive
+                  ? "bg-green-600 text-white"
+                  : isUpcoming
+                    ? "bg-amber-500 text-white"
+                    : "bg-gray-300 text-gray-600";
+                return (
+                  <div key={p.popupId} className="flex items-center justify-between py-3 gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={p.fileUrl}
+                        alt={p.altText || p.title}
+                        className="w-12 h-12 rounded-md border object-cover shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-0.5 rounded ${statusClass}`}>{statusLabel}</span>
+                          <p className="text-sm font-medium truncate">{p.title}</p>
+                        </div>
+                        <span className="text-xs text-gray-400">
+                          {formatNoticeDate(p.startDate)} ~ {formatNoticeDate(p.endDate)}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeletePopup(p.popupId)}
+                      className="text-xs text-red-500 shrink-0"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </div>
+
       <div className="border rounded-xl divide-y">
         {notices.map((n) => (
           <div key={n.noticeId} className="flex items-center justify-between p-4">
@@ -364,11 +472,10 @@ export const NoticeEditor = () => {
             <button
               key={i}
               onClick={() => setPage(i)}
-              className={`w-7 h-7 rounded-lg text-sm ${
-                i === page
+              className={`w-7 h-7 rounded-lg text-sm ${i === page
                   ? "bg-violet-600 text-white font-medium"
                   : "text-gray-500 hover:bg-violet-50"
-              }`}
+                }`}
             >
               {i + 1}
             </button>

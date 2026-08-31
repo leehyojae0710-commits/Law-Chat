@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { NoticeListItem as NoticeListItemType } from "../types";
 import { NOTICE_CATEGORY_LABELS, formatNoticeDate } from "../types";
 import { getNotice } from "../../../api/notice";
-import { resolveFileUrl } from "../hooks/useActivePopupNotices";
 
 interface NoticeListItemProps {
   notice: NoticeListItemType;
