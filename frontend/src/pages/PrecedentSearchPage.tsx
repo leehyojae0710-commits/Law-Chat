@@ -37,7 +37,7 @@ export const PrecedentSearchPage = () => {
 
   return (
     <div className="min-h-screen bg-violet-50 py-5">
-      <div className="max-w-6xl mx-auto px-8 py-10 grid grid-cols-[1fr_320px] gap-6 bg-white rounded-xl shadow-sm">
+      <div className="max-w-6xl mx-auto px-8 py-10 grid grid-cols-[minmax(0,1fr)_320px] gap-6 bg-white rounded-xl shadow-sm">
         <div className="space-y-4">
           <div>
             <h1 className="text-2xl font-bold">판례 검색</h1>

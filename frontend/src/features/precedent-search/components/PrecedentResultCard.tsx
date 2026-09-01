@@ -39,13 +39,15 @@ export const PrecedentResultCard = ({
   return (
     <div className="border rounded-lg p-4">
       <div className="flex items-start justify-between gap-3">
-        <button type="button" className="text-left flex-1" onClick={toggleExpand}>
-          <p className="text-xs text-gray-400 mb-1">
+        <button type="button" className="text-left flex-1 min-w-0" onClick={toggleExpand}>
+          <p className="text-xs text-gray-400 mb-1 break-words">
             {precedent.court}
             {precedent.decidedDate && ` · ${precedent.decidedDate} 선고`} · {precedent.caseNumber}
           </p>
-          <p className="font-semibold mb-1">{precedent.title}</p>
-          <p className="text-sm text-gray-600">{precedent.summary}</p>
+          <p className="font-semibold mb-1 break-words">{precedent.title}</p>
+          <p className={`text-sm text-gray-600 break-words ${expanded ? "" : "line-clamp-2"}`}>
+            {precedent.summary}
+          </p>
         </button>
 
         {isAuthenticated && (
@@ -62,7 +64,7 @@ export const PrecedentResultCard = ({
       </div>
 
       {expanded && (
-        <div className="mt-3 pt-3 border-t text-sm space-y-2">
+        <div className="mt-3 pt-3 border-t text-sm space-y-2 min-w-0">
           {isLoading && <p className="text-gray-400">불러오는 중...</p>}
           {error && <p className="text-red-500">{error}</p>}
           {detail && (
@@ -70,19 +72,19 @@ export const PrecedentResultCard = ({
               {detail.holding && (
                 <div>
                   <p className="font-medium text-gray-700">판시사항</p>
-                  <p className="text-gray-600 whitespace-pre-line">{detail.holding}</p>
+                  <p className="text-gray-600 whitespace-pre-line break-words">{detail.holding}</p>
                 </div>
               )}
               {detail.referencedArticles && (
                 <div>
                   <p className="font-medium text-gray-700">참조조문</p>
-                  <p className="text-gray-600 whitespace-pre-line">{detail.referencedArticles}</p>
+                  <p className="text-gray-600 whitespace-pre-line break-words">{detail.referencedArticles}</p>
                 </div>
               )}
               {detail.referencedCases && (
                 <div>
                   <p className="font-medium text-gray-700">참조판례</p>
-                  <p className="text-gray-600 whitespace-pre-line">{detail.referencedCases}</p>
+                  <p className="text-gray-600 whitespace-pre-line break-words">{detail.referencedCases}</p>
                 </div>
               )}
             </>
