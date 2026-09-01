@@ -1,11 +1,10 @@
 export type SupportTab = "inquiry-form" | "inquiry-list" | "find-account";
 
-export type InquiryCategory = "BUG" | "USAGE" | "BILLING" | "ACCOUNT" | "ETC";
+export type InquiryCategory = "BUG" | "USAGE" | "ACCOUNT" | "ETC";
 
 export const INQUIRY_CATEGORY_LABELS: Record<InquiryCategory, string> = {
   BUG: "버그 제보",
   USAGE: "이용 문의",
-  BILLING: "결제·요금",
   ACCOUNT: "계정",
   ETC: "기타",
 };
