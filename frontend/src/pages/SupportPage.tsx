@@ -16,7 +16,8 @@ export const SupportPage = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-8 py-10 grid grid-cols-[220px_1fr] gap-8">
+    <div className="min-h-[calc(100vh-65px)] bg-violet-200 py-10">
+    <div className="max-w-6xl mx-auto min-h-[650px] px-8 py-10 grid grid-cols-[220px_1fr] gap-8 bg-white rounded-xl shadow-sm">
       <SupportSideMenu active={tab} onSelect={handleTabSelect} />
       <div>
         {tab === "inquiry-form" && <InquiryForm onSubmitted={() => handleTabSelect("inquiry-list")} />}
@@ -32,6 +33,7 @@ export const SupportPage = () => {
           ))}
         {tab === "find-account" && <FindAccountForm />}
       </div>
+    </div>
     </div>
   );
 };

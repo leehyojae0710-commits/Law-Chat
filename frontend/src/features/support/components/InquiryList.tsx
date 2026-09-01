@@ -12,7 +12,7 @@ export const InquiryList = ({ onSelect }: InquiryListProps) => {
 
   if (inquiries.length === 0) {
     return (
-      <div className="border rounded-xl p-10 text-center">
+      <div className="border rounded-xl p-10 text-center mx-auto">
         <p className="text-sm text-gray-400">등록된 문의가 없습니다.</p>
       </div>
     );
