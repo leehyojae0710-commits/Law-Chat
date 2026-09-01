@@ -14,13 +14,10 @@ java {
     }
 }
 
-<<<<<<< HEAD
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs << '-parameters'
 }
 
-=======
->>>>>>> main
 tasks.withType(Test).configureEach {
     systemProperty 'file.encoding', 'UTF-8'
 }

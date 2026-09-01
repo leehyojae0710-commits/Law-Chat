@@ -1,4 +1,4 @@
-package com.lawchat.inquiry.domain;
+package com.lawchat.domain.inquiry.domain;
 
 /**
  * DB에 status 컬럼이 없으므로 answered_at + is_approved 로 계산해서 내려주는 파생 값입니다.
