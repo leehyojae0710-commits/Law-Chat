@@ -9,13 +9,11 @@ export const getNotices = async (
   const res = await apiClient.get<PageResponse<NoticeListItem>>("/notices", {
     params: { category, page, size },
   });
-  console.log(res.data);
   return res.data;
 };
 
 export const getNotice = async (noticeId: number): Promise<Notice> => {
   const res = await apiClient.get<Notice>(`/notices/${noticeId}`);
-  console.log(res.data);
   return res.data;
 };
 

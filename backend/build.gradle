@@ -14,10 +14,13 @@ java {
     }
 }
 
+<<<<<<< HEAD
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs << '-parameters'
 }
 
+=======
+>>>>>>> main
 tasks.withType(Test).configureEach {
     systemProperty 'file.encoding', 'UTF-8'
 }
@@ -25,7 +28,9 @@ tasks.withType(Test).configureEach {
 tasks.withType(Javadoc).configureEach {
     options.encoding = 'UTF-8'
 }
-
+tasks.withType(JavaCompile) {
+    options.compilerArgs << '-parameters'
+}
 eclipse {
     classpath {
         defaultOutputDir = file('build/classes')

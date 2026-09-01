@@ -15,12 +15,17 @@ export interface Notice {
   isPinned: boolean;
   createdAt: string;
   updatedAt?: string;
+  // 공지 상세 응답에 포함되는 팝업 복원용 필드 (팝업이 없으면 hasPopup: false, 나머지는 없음)
+  hasPopup?: boolean;
+  popupStartDate?: string;
+  popupEndDate?: string;
 }
 
 export type NoticeListItem = Omit<Notice, "content" | "fileUrl" | "updatedAt">;
 
 export interface NoticePopup {
   popupId: number;
+  noticeId: number | null; // 이 팝업이 어느 공지에서 만들어졌는지 (독립 생성된 팝업이면 null)
   title: string;
   fileUrl: string;
   altText?: string;
@@ -32,6 +37,8 @@ export interface NoticePopupAdmin extends NoticePopup {
   endDate: string;
   createdAt: string;
   isActive: boolean;
+  // 공지 삭제 시 이 팝업도 함께 삭제되는지 여부 (표시용 배지)
+  linkedToNotice: boolean;
 }
 
 /** Spring Data Page<T> 응답 형태 그대로 */
