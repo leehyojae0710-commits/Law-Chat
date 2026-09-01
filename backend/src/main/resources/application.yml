@@ -51,7 +51,7 @@ spring:
             required: true
 
 file:
-  upload-dir: \\192.168.0.229\uploads
+  upload-dir: \\192.168.0.229\uploads\2차\images
 
 # ==========================================
 # JWT Token Settings

@@ -1,4 +1,6 @@
 import { apiClient } from "./client";
+import type { InquiryCategory, InquiryStatus } from "../features/support/types";
+import type { Notice, NoticeCategory, NoticeListItem, NoticePopup, NoticePopupAdmin, PageResponse } from "../features/notice/types";
 
 // ===== 대시보드 =====
 export interface DashboardStats {
@@ -14,30 +16,51 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 };
 
 // ===== 1:1 문의 처리 =====
-export interface Inquiry {
-  id: string;
+// 관리자 목록/상세 응답 - 사용자용과 달리 content, answerContent(미승인 포함), 작성자 정보까지 항상 포함됨
+export interface AdminInquiryItem {
+  inquiryId: number;
+  category: InquiryCategory;
+  categoryLabel: string;
   title: string;
   content: string;
-  authorEmail: string;
-  status: "미답변" | "답변완료";
+  screenshotUrl: string | null; // 절대 URL, 첨부 없으면 null
+  // 탈퇴 회원이면 셋 다 null, 익명화된 회원이면 authorEmail만 null
+  authorId: number | null;
+  authorEmail: string | null;
+  authorNickname: string | null;
+  status: InquiryStatus;
+  statusLabel: string;
+  answerContent: string | null;
+  answeredAt: string | null;
   createdAt: string;
 }
 
-export const getInquiries = async (): Promise<Inquiry[]> => {
-  const res = await apiClient.get<Inquiry[]>("/admin/inquiries");
+export const getAdminInquiries = async (
+  status?: InquiryStatus,
+  category?: InquiryCategory,
+  page = 0,
+  size = 20
+): Promise<PageResponse<AdminInquiryItem>> => {
+  const res = await apiClient.get<PageResponse<AdminInquiryItem>>("/admin/inquiries", {
+    params: { status, category, page, size },
+  });
   return res.data;
 };
 
-export const answerInquiry = async (inquiryId: string, answer: string): Promise<void> => {
-  await apiClient.post(`/admin/inquiries/${inquiryId}/answer`, { answer });
+export const getAdminInquiry = async (inquiryId: number): Promise<AdminInquiryItem> => {
+  const res = await apiClient.get<AdminInquiryItem>(`/admin/inquiries/${inquiryId}`);
+  return res.data;
+};
+
+// 같은 엔드포인트로 등록/수정 둘 다 처리됨 (이미 답변이 있으면 덮어쓰고 answeredAt 갱신)
+export const answerInquiry = async (inquiryId: number, answerContent: string): Promise<void> => {
+  await apiClient.post(`/admin/inquiries/${inquiryId}/answer`, { answerContent });
 };
 
 // ===== 공지사항 관리 =====
-import type { Notice, NoticeCategory, NoticeListItem, NoticePopup, NoticePopupAdmin, PageResponse } from "../features/notice/types";
 
-// 백엔드에 admin 전용 목록 API가 없어서, 공개 목록 API를 재사용합니다.
-export const getAdminNotices = async (page = 0, size = 50): Promise<PageResponse<NoticeListItem>> => {
-  const res = await apiClient.get<PageResponse<NoticeListItem>>("/notices", { params: { page, size } });
+export const getAdminNotices = async (page = 0, size = 10): Promise<PageResponse<NoticeListItem>> => {
+  const res = await apiClient.get<PageResponse<NoticeListItem>>("/admin/notices", { params: { page, size } });
   return res.data;
 };
 
@@ -46,6 +69,9 @@ export const createNotice = async (notice: {
   title: string;
   content: string;
   fileUrl?: string;
+  createPopup: boolean;
+  popupStartDate?: string; // createPopup이 true일 때만 필요, ISO 문자열
+  popupEndDate?: string;   // createPopup이 true일 때만 필요, ISO 문자열
 }): Promise<number> => {
   const res = await apiClient.post<number>("/admin/notices", notice);
   return res.data;
@@ -53,7 +79,11 @@ export const createNotice = async (notice: {
 
 export const updateNotice = async (
   noticeId: number,
-  notice: Partial<Pick<Notice, "title" | "content" | "fileUrl">>
+  notice: Partial<Pick<Notice, "title" | "content" | "fileUrl">> & {
+    createPopup: boolean;
+    popupStartDate?: string;
+    popupEndDate?: string;
+  }
 ): Promise<void> => {
   await apiClient.patch(`/admin/notices/${noticeId}`, notice);
 };
@@ -80,6 +110,7 @@ export const createPopup = async (popup: {
   altText?: string;
   startDate: string; // ISO
   endDate: string;   // ISO
+  noticeId?: number; // 이 팝업이 어떤 공지에서 만들어졌는지 백엔드에 같이 저장
 }): Promise<number> => {
   const res = await apiClient.post<number>("/admin/notices/popups", popup);
   return res.data;
@@ -98,11 +129,16 @@ export const deletePopup = async (popupId: number): Promise<void> => {
 
 // ===== 파일 업로드 (공지/팝업 이미지·첨부용) =====
 
-export const uploadNoticeFile = async (file: File): Promise<string> => {
+export interface UploadedNoticeFile {
+  fileName: string; // 공지/팝업 등록 요청의 fileUrl 필드에 그대로 넣을 값
+  fileUrl: string;  // 업로드 직후 미리보기(<img src>)에만 사용
+}
+
+export const uploadNoticeFile = async (file: File): Promise<UploadedNoticeFile> => {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await apiClient.post<{ fileUrl: string }>("/admin/notices/upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return res.data.fileUrl;
+  // Content-Type을 수동으로 지정하지 않음 — axios/브라우저가 FormData를 보고
+  // boundary가 포함된 정확한 multipart Content-Type을 자동으로 설정하도록 둠.
+  const res = await apiClient.post<UploadedNoticeFile>("/admin/notices/upload", formData);
+  return res.data;
 };

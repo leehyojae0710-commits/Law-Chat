@@ -15,7 +15,6 @@ public class NoticePopupUpdateRequest {
 
     private String title;
     private String fileUrl;
-    private String linkUrl;
     private String altText;
     private LocalDateTime startDate;
     private LocalDateTime endDate;

@@ -11,6 +11,7 @@ export const NoticeListItem = ({ notice }: NoticeListItemProps) => {
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fileUrl, setFileURL] = useState<string | undefined>(undefined);
 
   const handleToggle = async () => {
     const next = !open;
@@ -21,6 +22,7 @@ export const NoticeListItem = ({ notice }: NoticeListItemProps) => {
       try {
         const detail = await getNotice(notice.noticeId);
         setContent(detail.content);
+        setFileURL(detail.fileUrl);
       } catch {
         setContent("내용을 불러오지 못했습니다.");
       } finally {
@@ -47,6 +49,7 @@ export const NoticeListItem = ({ notice }: NoticeListItemProps) => {
       {open && (
         <p className="mt-3 text-sm text-gray-600 border-t pt-3">
           {loading ? "불러오는 중..." : content}
+          {loading ? "불러오는 중..." : fileUrl ? <img src={fileUrl}/> : ""}
         </p>
       )}
     </div>
