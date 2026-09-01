@@ -1,4 +1,6 @@
 import { apiClient } from "./client";
+import type { InquiryCategory, InquiryStatus } from "../features/support/types";
+import type { Notice, NoticeCategory, NoticeListItem, NoticePopup, NoticePopupAdmin, PageResponse } from "../features/notice/types";
 
 // ===== 대시보드 =====
 export interface DashboardStats {
@@ -14,27 +16,48 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 };
 
 // ===== 1:1 문의 처리 =====
-export interface Inquiry {
-  id: string;
+// 관리자 목록/상세 응답 - 사용자용과 달리 content, answerContent(미승인 포함), 작성자 정보까지 항상 포함됨
+export interface AdminInquiryItem {
+  inquiryId: number;
+  category: InquiryCategory;
+  categoryLabel: string;
   title: string;
   content: string;
-  authorEmail: string;
-  status: "미답변" | "답변완료";
+  screenshotUrl: string | null; // 절대 URL, 첨부 없으면 null
+  // 탈퇴 회원이면 셋 다 null, 익명화된 회원이면 authorEmail만 null
+  authorId: number | null;
+  authorEmail: string | null;
+  authorNickname: string | null;
+  status: InquiryStatus;
+  statusLabel: string;
+  answerContent: string | null;
+  answeredAt: string | null;
   createdAt: string;
 }
 
-export const getInquiries = async (): Promise<Inquiry[]> => {
-  const res = await apiClient.get<Inquiry[]>("/admin/inquiries");
+export const getAdminInquiries = async (
+  status?: InquiryStatus,
+  category?: InquiryCategory,
+  page = 0,
+  size = 20
+): Promise<PageResponse<AdminInquiryItem>> => {
+  const res = await apiClient.get<PageResponse<AdminInquiryItem>>("/admin/inquiries", {
+    params: { status, category, page, size },
+  });
   return res.data;
 };
 
-export const answerInquiry = async (inquiryId: string, answer: string): Promise<void> => {
-  await apiClient.post(`/admin/inquiries/${inquiryId}/answer`, { answer });
+export const getAdminInquiry = async (inquiryId: number): Promise<AdminInquiryItem> => {
+  const res = await apiClient.get<AdminInquiryItem>(`/admin/inquiries/${inquiryId}`);
+  return res.data;
+};
+
+// 같은 엔드포인트로 등록/수정 둘 다 처리됨 (이미 답변이 있으면 덮어쓰고 answeredAt 갱신)
+export const answerInquiry = async (inquiryId: number, answerContent: string): Promise<void> => {
+  await apiClient.post(`/admin/inquiries/${inquiryId}/answer`, { answerContent });
 };
 
 // ===== 공지사항 관리 =====
-import type { Notice, NoticeCategory, NoticeListItem, NoticePopup, NoticePopupAdmin, PageResponse } from "../features/notice/types";
-
 
 export const getAdminNotices = async (page = 0, size = 10): Promise<PageResponse<NoticeListItem>> => {
   const res = await apiClient.get<PageResponse<NoticeListItem>>("/admin/notices", { params: { page, size } });
