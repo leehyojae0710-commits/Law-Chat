@@ -1,4 +1,4 @@
-package com.lawchat.inquiry.service;
+package com.lawchat.domain.inquiry.service;
 
 /**
  * 관리자 화면에서 작성자 이메일만 필요해서, users 도메인과의 결합을 이 인터페이스로 끊어둡니다.

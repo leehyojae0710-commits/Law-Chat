@@ -1,4 +1,4 @@
-package com.lawchat.inquiry.controller;
+package com.lawchat.domain.inquiry.controller;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;

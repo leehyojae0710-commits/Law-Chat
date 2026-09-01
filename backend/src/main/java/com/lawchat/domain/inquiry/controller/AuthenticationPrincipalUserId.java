@@ -1,4 +1,4 @@
-package com.lawchat.inquiry.controller;
+package com.lawchat.domain.inquiry.controller;
 
 import java.lang.annotation.*;
 

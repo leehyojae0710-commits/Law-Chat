@@ -1,4 +1,4 @@
-package com.lawchat.inquiry.domain;
+package com.lawchat.domain.inquiry.domain;
 
 /**
  * inquiries.category 에 문자열 그대로 저장됩니다. (varchar(50))
