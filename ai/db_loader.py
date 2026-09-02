@@ -181,6 +181,11 @@ def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None =
     root = _api_service("law", law_id, **({"MST": mst} if mst else {}))
     law_name = _xtext(root, "법령명_한글", "법령명한글")
 
+    # ⚠️ law.go.kr 상세페이지(lsInfoP.do)의 lsiSeq 파라미터는 "법령ID"가 아니라
+    # "법령일련번호(MST)"를 요구한다. law_id를 그대로 넣으면 전혀 다른 법령이 열릴 수 있으므로
+    # source_id는 반드시 mst를 사용한다 (mst가 없으면 URL을 만들 수 없으니 빈 값으로 둔다).
+    url_source_id = mst or ""
+
     docs: list[LegalDocument] = []
     for jo in root.findall(".//조문단위"):
         jo_no = _xtext(jo, "조문번호")
@@ -189,11 +194,20 @@ def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None =
         jo_content = _xtext(jo, "조문내용")
         article_label = f"제{jo_no}조" + (f"의{jo_gaji}" if jo_gaji and jo_gaji != "0" else "")
 
+        # joNo/joBrNo 딥링크 파라미터 (law.go.kr은 조번호 4자리, 조가지번호 2자리로 0-padding)
+        jo_link_extra = {}
+        if jo_no:
+            jo_link_extra = {
+                "jo_no": jo_no.zfill(4),
+                "jo_br_no": (jo_gaji or "0").zfill(2),
+            }
+
         if jo_content.strip():
             docs.append(LegalDocument(
                 content=f"{article_label}({jo_title}) {jo_content}".strip(),
                 law_name=law_name, article_no=article_label,
-                docu_type="법령", legal_type=legal_type, source_id=law_id,
+                docu_type="법령", legal_type=legal_type, source_id=url_source_id,
+                extra=dict(jo_link_extra),
             ))
         for hang in jo.findall(".//항"):
             hang_no = _xtext(hang, "항번호")
@@ -204,8 +218,8 @@ def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None =
                 docs.append(LegalDocument(
                     content=f"{hang_label} {hang_content}".strip(),
                     law_name=law_name, article_no=article_label,
-                    docu_type="법령", legal_type=legal_type, source_id=law_id,
-                    extra={"chunk_level": "항"},
+                    docu_type="법령", legal_type=legal_type, source_id=url_source_id,
+                    extra={"chunk_level": "항", **jo_link_extra},
                 ))
 
             for ho in hang.findall("./호"):
@@ -217,8 +231,8 @@ def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None =
                     docs.append(LegalDocument(
                         content=f"{ho_label} {ho_content}".strip(),
                         law_name=law_name, article_no=article_label,
-                        docu_type="법령", legal_type=legal_type, source_id=law_id,
-                        extra={"chunk_level": "호"},
+                        docu_type="법령", legal_type=legal_type, source_id=url_source_id,
+                        extra={"chunk_level": "호", **jo_link_extra},
                     ))
 
                 for mok in ho.findall("./목"):
@@ -228,10 +242,10 @@ def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None =
                         docs.append(LegalDocument(
                             content=f"{ho_label}{mok_no} {mok_content}".strip(),
                             law_name=law_name, article_no=article_label,
-                            docu_type="법령", legal_type=legal_type, source_id=law_id,
-                            extra={"chunk_level": "목"},
+                            docu_type="법령", legal_type=legal_type, source_id=url_source_id,
+                            extra={"chunk_level": "목", **jo_link_extra},
                         ))
-    logger.info(f"[법령] {law_name} ({law_id}) → {len(docs)}개 청크")
+    logger.info(f"[법령] {law_name} (법령ID={law_id}, MST={mst}) → {len(docs)}개 청크")
     return docs
 
 

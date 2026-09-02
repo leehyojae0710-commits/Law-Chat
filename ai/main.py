@@ -394,6 +394,17 @@ def chat_auto(req: AutoChatRequest):
     if not req.text or not req.text.strip():
         raise HTTPException(400, "text가 비어 있습니다.")
 
+    # ⚠️ 법률 질문 여부 게이트. 이게 없으면 classify_domains()가 "무응답 방지"용으로
+    # threshold 미달이어도 1등 도메인을 강제로 골라버려서, printf("Hello, World!") 같은
+    # 법률과 무관한 입력에도 그럴듯한 법률 답변을 지어내는 문제가 있었다.
+    legal_ok, gate_score = is_legal_question(req.text)
+    if not legal_ok:
+        log.info(f"[게이트] 비법률 입력으로 판단(score={gate_score}), classify_domains 건너뜀: {req.text[:50]!r}")
+        return AutoChatResponse(
+            text=req.text, detected_domains=[], unavailable_domains=[],
+            answer=OFF_TOPIC_REPLY,
+        )
+
     ranked = classify_domains(req.text)
 
     domain_answers: list[DomainAnswer] = []
