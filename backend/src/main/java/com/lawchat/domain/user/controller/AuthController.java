@@ -5,6 +5,7 @@ import com.lawchat.domain.user.dto.request.LoginRequest;
 import com.lawchat.domain.user.dto.request.NaverLoginRequest;
 import com.lawchat.domain.user.dto.request.SignupRequest;
 import com.lawchat.domain.user.dto.response.AuthResponse;
+import com.lawchat.domain.user.dto.response.UserProfileResponse;
 import com.lawchat.domain.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -118,6 +119,38 @@ public class AuthController {
     public ResponseEntity<AuthResponse> naverLogin(@Valid @RequestBody NaverLoginRequest request) {
         return ResponseEntity.ok(
                 userService.naverLoginWithCode(request.code(), request.state(), request.redirectUri()));
+    }
+
+    /**
+     * 현재 로그인 상태 확인 (토큰 유효성 검증)
+     * GET /api/auth/me
+     *
+     * ★ 이 메서드 본문에 도달했다는 사실 자체가 "토큰이 유효하다"는 증명이다.
+     *   JwtAuthenticationFilter 가 이미 아래를 전부 마쳤기 때문이다.
+     *     1. JWT 서명 검증 (위조 여부)
+     *     2. 만료 시각 검증
+     *     3. 토큰의 sessionToken 과 DB users.session_token 대조
+     *     4. 탈퇴 회원 여부 확인
+     *   하나라도 실패하면 여기 오지 못하고 401 이 응답된다.
+     *   그래서 이 메서드 안에 별도 검증 로직이 없는 것이 정상이다.
+     *
+     * [프론트 사용 시나리오]
+     *   앱 시작 시(새로고침/브라우저 재접속) 저장소에 토큰이 남아 있어도
+     *   그것이 아직 살아있는지는 알 수 없다. 이 API 를 한 번 호출해서 판단한다.
+     *     200 -> 유효. 응답으로 온 최신 회원 정보로 화면을 그린다.
+     *     401 -> 무효. 저장소를 비우고 로그인 화면으로 보낸다.
+     *            응답 body 의 code 로 사유를 구분할 수 있다.
+     *              SESSION_INVALIDATED : 다른 기기에서 로그인되어 밀려남
+     *              INVALID_TOKEN       : 토큰 없음/만료/위조
+     *
+     * [왜 최신 정보를 다시 내려주는가]
+     *   로그인 시점 이후에 닉네임/프로필 이미지가 바뀌었거나
+     *   관리자 권한이 부여/회수됐을 수 있다. 토큰 안의 정보는 발급 시점에 고정되므로
+     *   DB 의 현재 값을 내려주어 프론트가 최신 상태로 갱신하게 한다.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getMe(@AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(userService.getMyProfile(userId));
     }
 
     /**
