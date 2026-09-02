@@ -41,6 +41,16 @@ export interface PrecedentDetail {
   isBookmarked: boolean;
 }
 
+/**
+ * GET /precedents/{id}/ai-summary - PrecedentAiSummaryResponse
+ * legal_chatbot_ai(KoBART) 실시간 요약. DB에 저장되지 않으므로 캐싱은 프론트 상태(컴포넌트 state)에서만 한다.
+ */
+export interface PrecedentAiSummary {
+  summary: string;
+  /** kobart 로딩은 됐지만 plain=false로 요청한 경우 등 null일 수 있음 */
+  plainSummary: string | null;
+}
+
 /** GET /precedents/bookmarks - SavedPrecedentPanel용 - PrecedentBookmarkResponse */
 export interface PrecedentBookmark {
   bookmarkId: number;
