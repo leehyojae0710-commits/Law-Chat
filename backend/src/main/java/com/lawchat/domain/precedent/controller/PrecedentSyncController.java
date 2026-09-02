@@ -26,19 +26,27 @@ public class PrecedentSyncController {
 
     /**
      * 예)
-     *   POST /api/admin/precedents/sync                         - 최근(어제 등록) 판례만 동기화
-     *   POST /api/admin/precedents/sync?query=부당해고&maxPages=5  - 검색어 기준 동기화
-     *   POST /api/admin/precedents/sync?date=2026-08-23           - 특정 등록일자 전체 동기화
+     *   POST /api/admin/precedents/sync                          - 최근(어제 등록) 판례만 동기화
+     *   POST /api/admin/precedents/sync?query=부당해고&maxPages=5   - 검색어 기준 동기화
+     *   POST /api/admin/precedents/sync?date=2026-08-23            - 특정 등록일자 전체 동기화
+     *   POST /api/admin/precedents/sync?all=true&maxPages=3000     - 검색어/날짜 조건 없이 전체 판례 동기화
+     *                                                                (규모가 크므로 maxPages를 넉넉히 줄 것)
      */
     @PostMapping("/sync")
     public SyncResult sync(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(defaultValue = "10") int maxPages
+            @RequestParam(defaultValue = "10") int maxPages,
+            @RequestParam(defaultValue = "false") boolean all
     ) {
-        int processed = (query == null && date == null)
-                ? precedentSyncService.syncRecent()
-                : precedentSyncService.syncByQuery(query, date, maxPages);
+        int processed;
+        if (all) {
+            processed = precedentSyncService.syncAll(maxPages);
+        } else if (query == null && date == null) {
+            processed = precedentSyncService.syncRecent();
+        } else {
+            processed = precedentSyncService.syncByQuery(query, date, maxPages);
+        }
 
         return new SyncResult(processed);
     }
