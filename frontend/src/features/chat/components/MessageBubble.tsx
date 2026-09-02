@@ -40,17 +40,25 @@ export const MessageBubble = ({ message, onFeedback }: MessageBubbleProps) => {
 
           {message.sources && message.sources.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-200 pt-3">
-              {message.sources.map((s) => (
-                <a
-                  key={`${s.lawName}-${s.articleNumber}`}
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-md border border-violet-200 bg-white px-2.5 py-1 text-xs font-medium text-violet-700 hover:bg-violet-50"
-                >
-                  {s.lawName} {s.articleNumber}
-                </a>
-              ))}
+              {message.sources.map((s) => {
+                // 법령 조문이면 "법령명 제n조", 판례면 사건번호를 라벨로 사용.
+                // (caseNum을 안 쓰면 판례 항목은 lawName/articleNumber가 비어있어
+                //  텍스트 없는 빈 버튼으로 보이는 문제가 있었음)
+                const label = s.lawName || s.articleNumber
+                  ? `${s.lawName} ${s.articleNumber}`.trim()
+                  : s.caseNum || "출처 보기";
+                return (
+                  <a
+                    key={`${s.lawName}-${s.articleNumber}-${s.caseNum}`}
+                    href={s.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md border border-violet-200 bg-white px-2.5 py-1 text-xs font-medium text-violet-700 hover:bg-violet-50"
+                  >
+                    {label}
+                  </a>
+                );
+              })}
             </div>
           )}
         </div>
