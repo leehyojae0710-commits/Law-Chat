@@ -23,14 +23,20 @@ public record UserProfileResponse(
         Boolean isAdmin,
         LocalDateTime createdAt
 ) {
-    /** 엔티티 -> DTO 변환. password 는 의도적으로 포함하지 않는다. */
+    /**
+     * 엔티티 -> DTO 변환. password 는 의도적으로 포함하지 않는다.
+     *
+     * socialProvider 는 엔티티에서 SocialProvider enum(User.getSocialProvider())으로 관리하지만,
+     * 응답 JSON 모양은 기존과 동일하게 문자열로 유지한다(프론트 스펙 변경 없음).
+     * 일반(이메일) 가입자는 소셜 provider 가 없으므로 null 로 내려간다.
+     */
     public static UserProfileResponse from(User user) {
         return new UserProfileResponse(
                 user.getUserId(),
                 user.getEmail(),
                 user.getNickname(),
                 user.getProfileImg(),
-                user.getSocialProvider(),
+                user.getSocialProvider() == null ? null : user.getSocialProvider().name(),
                 user.getStatus(),
                 user.getIsAdmin(),
                 user.getCreatedAt()

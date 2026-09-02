@@ -27,19 +27,25 @@ _DENSE_SCORE_THRESHOLD = 1.0
 # db_loader.py가 이미 metadata에 source_id(법령ID 또는 판례일련번호)를 채워두므로,
 # 그걸로 국가법령정보센터 상세 페이지 URL을 만들어 응답에 실어보낸다.
 #
-# ⚠️ 주의: 아래 URL 패턴은 law.go.kr의 공개적으로 알려진 상세페이지 규칙을 기반으로
-# 작성한 것으로, 실제 응답 원본 문서에서 눈으로 직접 한 번 검증 후 쓰는 걸 권장합니다.
-# (법령/판례 각각 실제 링크가 열리는지 브라우저로 확인해보세요.)
+# source_id는 db_loader.py에서 법령=법령일련번호(MST), 판례=판례일련번호로 채워진다.
+# (법령ID를 넣으면 엉뚱한 법령이 열리므로 반드시 MST여야 함 — 2024-xx-xx 버그 수정)
+# 실제로 브라우저에서 열어서 검증 완료:
+#   - https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=<MST> → 해당 법령 본문
+#   - https://www.law.go.kr/precInfoP.do?precSeq=<판례일련번호> → 해당 판례 본문
+#   - joNo(조번호 4자리)/joBrNo(조가지번호 2자리)를 추가하면 특정 조문으로 바로 이동 가능
 # ──────────────────────────────────────────────────────────────
 _LAW_DETAIL_URL = "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq={source_id}"
 _PREC_DETAIL_URL = "https://www.law.go.kr/precInfoP.do?precSeq={source_id}"
 
 
-def build_source_url(docu_type: str, source_id: str) -> str:
+def build_source_url(docu_type: str, source_id: str, jo_no: str = "", jo_br_no: str = "") -> str:
     if not source_id:
         return ""
     if docu_type == "법령":
-        return _LAW_DETAIL_URL.format(source_id=source_id)
+        url = _LAW_DETAIL_URL.format(source_id=source_id)
+        if jo_no:
+            url += f"&joNo={jo_no}&joBrNo={jo_br_no or '00'}"
+        return url
     if docu_type in ("판례", "해석례", "결정례"):
         return _PREC_DETAIL_URL.format(source_id=source_id)
     return ""
@@ -145,13 +151,15 @@ def retrieve_context(
         meta = doc.metadata
         docu_type = meta.get("docu_type", "") or ""
         source_id = meta.get("source_id", "") or ""
+        jo_no = meta.get("jo_no", "") or ""
+        jo_br_no = meta.get("jo_br_no", "") or ""
         results.append({
             "rank": rank,
             "law_name": meta.get("law_name", "") or "",
             "article_no": meta.get("article_no", "") or "",
             "docu_type": docu_type,
             "case_num": meta.get("case_num", "") or "",
-            "url": build_source_url(docu_type, source_id),
+            "url": build_source_url(docu_type, source_id, jo_no, jo_br_no),
             "_content": doc.page_content,
         })
     return results

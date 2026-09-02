@@ -162,6 +162,7 @@ public class ChatService {
         try {
             return objectMapper.readValue(sourcesJson, new TypeReference<List<LegalSourceResponse>>() {});
         } catch (JsonProcessingException e) {
+            log.warn("sources JSON 역직렬화 실패: {}", sourcesJson, e);
             return Collections.emptyList();
         }
     }
@@ -192,8 +193,11 @@ public class ChatService {
 
     /**
      * AutoChatResponse.detected_domains[*].sources를 모아서
-     * 프론트가 쓰는 LegalSourceResponse(lawName, articleNumber, url) 형태의 JSON 문자열로 변환한다.
+     * 프론트가 쓰는 LegalSourceResponse(lawName, articleNumber, caseNum, url) 형태의 JSON 문자열로 변환한다.
      * 도메인이 여러 개일 때는 순서대로 합쳐서 보여준다.
+     *
+     * ⚠️ caseNum을 빼먹으면 판례(law_name/article_no가 빈 문자열인 항목) 참조 버튼이
+     * 텍스트 없이 빈 칸으로 렌더링되는 문제가 있었으므로 반드시 함께 전달한다.
      */
     private String serializeSources(LegalChatbotAiResponse aiResponse) {
         if (aiResponse.detectedDomains() == null || aiResponse.detectedDomains().isEmpty()) {
@@ -203,7 +207,8 @@ public class ChatService {
         List<LegalSourceResponse> sources = aiResponse.detectedDomains().stream()
                 .filter(domain -> domain.sources() != null)
                 .flatMap(domain -> domain.sources().stream())
-                .map(source -> new LegalSourceResponse(source.lawName(), source.articleNo(), source.url()))
+                .map(source -> new LegalSourceResponse(
+                        source.lawName(), source.articleNo(), source.caseNum(), source.url()))
                 .toList();
 
         if (sources.isEmpty()) {

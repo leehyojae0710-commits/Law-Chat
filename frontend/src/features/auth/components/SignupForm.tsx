@@ -8,6 +8,8 @@ export const SignupForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [phone, setPhone] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,8 +22,9 @@ export const SignupForm = () => {
     }
 
     try {
-      await signup({ email, password, passwordConfirm });
-      navigate("/chat");
+      // 백엔드가 하이픈 유무 상관없이 받아 숫자만 정규화하므로 프론트에서 따로 가공하지 않고 그대로 보낸다.
+      await signup({ email, nickname, password, passwordConfirm, phone });
+      navigate("/");
     } catch {
       // error 상태는 useAuth에서 관리
     }
@@ -44,6 +47,33 @@ export const SignupForm = () => {
           required
           className="w-full mt-1 border rounded-lg px-3 py-2.5 text-sm"
         />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">닉네임</label>
+        <input
+          type="nickname"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="닉네임"
+          required
+          className="w-full mt-1 border rounded-lg px-3 py-2.5 text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">전화번호</label>
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="01012345678"
+          required
+          pattern="01[0-9]-?[0-9]{3,4}-?[0-9]{4}"
+          title="올바른 휴대폰 번호 형식이 아닙니다. (예: 01012345678)"
+          className="w-full mt-1 border rounded-lg px-3 py-2.5 text-sm"
+        />
+        <p className="text-xs text-gray-400 mt-1">아이디 찾기·비밀번호 재설정에 사용돼요.</p>
       </div>
 
       <div>

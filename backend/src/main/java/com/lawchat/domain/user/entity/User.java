@@ -41,6 +41,10 @@ public class User {
     @Column(name = "password", length = 255)
     private String password;
 
+    /** 전화번호. 숫자만 정규화해서 저장한다(하이픈 없이, 예: 01012345678). 아이디 찾기/비밀번호 재설정 인증 수단. */
+    @Column(name = "phone", length = 20, unique = true)
+    private String phone;
+
     /** 카카오/네이버 등이 내려주는 고유 회원 식별자 */
     @Column(name = "social_id", length = 255)
     private String socialId;
@@ -52,9 +56,13 @@ public class User {
     @Column(name = "profile_img", length = 512)
     private String profileImg;
 
-    /** "KAKAO", "NAVER", "GOOGLE" 등 */
+    /**
+     * 소셜 로그인 제공자. DB 컬럼은 VARCHAR(50) 그대로이고,
+     * EnumType.STRING 이라 "KAKAO"/"NAVER" 문자열로 저장/조회된다 (스키마 변경 없음).
+     */
+    @Enumerated(EnumType.STRING)
     @Column(name = "social_provider", length = 50)
-    private String socialProvider;
+    private SocialProvider socialProvider;
 
     @Enumerated(EnumType.STRING) // ENUM 문자열 그대로 저장
     @Column(name = "status", nullable = false)
@@ -93,11 +101,12 @@ public class User {
      * 이메일 회원가입용.
      * @param encodedPassword 반드시 서비스에서 PasswordEncoder 로 암호화한 값을 넘길 것
      */
-    public static User createLocalUser(String email, String encodedPassword, String nickname) {
+    public static User createLocalUser(String email, String encodedPassword, String nickname, String phone) {
         User user = new User();
         user.email = email;
         user.password = encodedPassword;
         user.nickname = nickname;
+        user.phone = phone;
         user.status = UserStatus.ACTIVE;
         user.isAdmin = false;
         return user;
@@ -111,7 +120,7 @@ public class User {
      *              users.email 에 UNIQUE 제약이 있으므로, 이미 쓰이는 이메일이면
      *              서비스 레이어에서 null 로 바꿔 넘겨야 INSERT 가 실패하지 않는다.
      */
-    public static User createSocialUser(String socialId, String socialProvider,
+    public static User createSocialUser(String socialId, SocialProvider socialProvider,
                                         String nickname, String profileImg, String email) {
         User user = new User();
         user.socialId = socialId;
@@ -170,30 +179,57 @@ public class User {
     }
 
     /**
-     * 탈퇴(soft delete). 실제 row 는 지우지 않고 상태만 바꾼다.
+     * 탈퇴(soft delete). 실제 row 는 지우지 않고 상태와 탈퇴 시각만 기록한다.
      *
-     * ★ 이메일을 마스킹하는 이유
-     *   users.email 에는 UNIQUE 제약이 걸려 있다. row 를 안 지우고 상태만 바꾸면
-     *   탈퇴한 회원의 이메일이 계속 그 값을 붙잡고 있어서, 같은 이메일로는
-     *   영원히 재가입할 수 없게 된다.
-     *   그렇다고 email 을 완전히 지워버리면(= null) 어떤 계정이 어떤 이메일로
-     *   가입했었는지 이력이 사라져 분쟁 대응이 어려워진다.
-     *   그래서 "식별은 안 되지만 값은 남는" 형태로 바꿔치기한다.
+     * ★ 이 시점에는 개인정보를 지우지 않는다.
+     *   탈퇴 직후에는 분쟁 대응·문의 확인 등을 위해 원본 정보가 필요할 수 있으므로,
+     *   보존 기간(application.yml 의 user.withdrawal.retention-days) 동안 그대로 둔다.
+     *   기간이 지나면 UserAnonymizationScheduler 가 anonymize() 를 호출해 개인정보를 파기한다.
      *
-     *   형식: withdrawn_{userId}@deleted.lawchat
-     *   - userId 는 PK 라 항상 유일 → 마스킹된 값끼리 절대 충돌하지 않는다.
-     *   - 컬럼 길이(255)에 여유롭게 들어간다.
-     *   - DB 스키마 변경 없이 기존 email 컬럼 값만 바뀌는 것이다.
-     *
-     *   소셜 가입자는 애초에 email 이 null 인 경우가 많으므로,
-     *   null 이면 마스킹하지 않고 그대로 둔다(빈 문자열을 만들 이유가 없음).
+     * ★ row 를 지우지 않는 이유
+     *   chat_sessions / precedent_bookmarks 가 ON DELETE CASCADE 로 물려 있어,
+     *   users row 를 실제로 삭제하면 상담 기록과 즐겨찾기가 통째로 함께 사라진다.
+     *   상담 기록은 익명 상태로 보존해야 하므로 row 는 반드시 남긴다.
      */
     public void withdraw() {
         this.status = UserStatus.DELETED;
         this.deletedAt = LocalDateTime.now();
-        if (this.email != null) {
-            this.email = "withdrawn_" + this.userId + "@deleted.lawchat";
-        }
+    }
+
+    /**
+     * 개인정보 익명화(파기). 보존 기간이 지난 탈퇴 회원에게 배치가 호출한다.
+     *
+     * ★ 핵심 개념
+     *   "row 를 지우는 것"이 아니라 "누구인지 알 수 없게 만드는 것"이다.
+     *   상담 기록(chat_sessions, chat_messages)은 user_id 로 연결되어 그대로 남고,
+     *   그 user_id 가 가리키는 회원에게서 개인 식별 정보만 사라진다.
+     *   → 상담 데이터는 통계·품질 개선·분쟁 대응용으로 계속 쓸 수 있고,
+     *     개인정보는 파기되어 개인정보보호법상 파기 의무를 충족한다.
+     *
+     * ★ 각 필드를 이렇게 처리하는 이유
+     *   - email : null 로 비운다. MySQL 의 UNIQUE 제약은 NULL 을 중복으로 보지 않으므로
+     *             여러 탈퇴 회원이 동시에 null 이어도 문제없고, 원래 이메일로 재가입도 가능해진다.
+     *   - password : 로그인 수단이므로 즉시 제거. 해시라도 남길 이유가 없다.
+     *   - socialId / socialProvider : 카카오 회원번호도 개인 식별자이므로 제거.
+     *             제거하면 같은 카카오 계정으로 다시 로그인해도 신규 가입으로 처리된다.
+     *   - profileImg : 얼굴 사진 등이 담길 수 있으므로 제거.
+     *   - nickname : DB 에서 NOT NULL 이라 null 을 넣을 수 없다.
+     *             그래서 개인을 특정할 수 없는 고정 형식으로 대체한다.
+     *             userId 를 붙이는 것은 익명성을 해치지 않으면서(이미 PK 로 공개된 값)
+     *             닉네임 중복 검사에 걸리지 않게 하기 위함이다.
+     *
+     * ★ status 와 deletedAt 은 유지한다.
+     *   "탈퇴한 회원"이라는 사실과 시점 자체는 개인정보가 아니며,
+     *   이 값이 있어야 배치가 이미 처리한 대상을 다시 건드리지 않는다.
+     */
+    public void anonymize() {
+        this.email = null;
+        this.password = null;
+        this.phone = null;
+        this.socialId = null;
+        this.socialProvider = null;
+        this.profileImg = null;
+        this.nickname = "탈퇴회원_" + this.userId;
     }
 
     /** 탈퇴 회원 복구 */
@@ -216,14 +252,16 @@ public class User {
     // ------------------------------------------------------------------
     public Long getUserId() { return userId; }
     public String getEmail() { return email; }
+    public String getPhone() { return phone; }
     public String getPassword() { return password; }
     public String getSocialId() { return socialId; }
     public String getNickname() { return nickname; }
     public String getProfileImg() { return profileImg; }
-    public String getSocialProvider() { return socialProvider; }
+    public SocialProvider getSocialProvider() { return socialProvider; }
     public UserStatus getStatus() { return status; }
     public Boolean getIsAdmin() { return isAdmin; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
 }
+
