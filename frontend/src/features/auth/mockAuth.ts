@@ -22,7 +22,12 @@ export const mockLogin = async (payload: LoginPayload): Promise<AuthResponse> =>
     throw new Error("이메일 또는 비밀번호가 틀렸습니다");
   }
 
-  const user = { id: found.id, name: found.name, email: found.email, role: found.role };
+  const user = {
+    id: found.id,
+    name: found.name,
+    email: found.email,
+    isAdmin: found.role === "ADMIN",
+  };
   const accessToken = "mock-token-" + Date.now();
   return { user, accessToken };
 };
@@ -46,7 +51,12 @@ export const mockSignup = async (payload: SignupPayload): Promise<AuthResponse> 
   };
   runtimeUsers.push(newUser);
 
-  const user = { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role };
+  const user = {
+    id: newUser.id,
+    name: newUser.name,
+    email: newUser.email,
+    isAdmin: false, // 회원가입으로 만드는 계정은 항상 일반 사용자입니다.
+  };
   const accessToken = "mock-token-" + Date.now();
   return { user, accessToken };
 };
