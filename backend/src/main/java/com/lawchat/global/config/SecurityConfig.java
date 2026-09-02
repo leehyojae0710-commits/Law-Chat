@@ -82,7 +82,8 @@ public class SecurityConfig {
                                 "/api/auth/naver",
                                 "/api/auth/naver/state",
                                 "/api/users/check-email",
-                                "/api/users/check-nickname"
+                                "/api/users/check-nickname",
+                                "/api/verification/**"
                         ).permitAll()
 
                         // 판례 북마크(저장)는 로그인 필요 — 아래 permitAll 규칙보다 먼저 와야 우선 적용된다.
@@ -91,7 +92,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/precedents/*/bookmark").authenticated()
 
                         // 공지사항/판례 조회 등 비로그인 열람 허용 영역
-                        .requestMatchers(HttpMethod.GET, "/api/notices/**", "/api/precedents/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/notices/**", "/api/precedents/**", "/api/files/**").permitAll()
 
                         // 개발 편의용
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/actuator/health").permitAll()

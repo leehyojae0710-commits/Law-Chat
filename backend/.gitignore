@@ -40,3 +40,7 @@ out/
 .env
 .env.*
 !.env.example
+
+.project
+.classpath
+.settings/

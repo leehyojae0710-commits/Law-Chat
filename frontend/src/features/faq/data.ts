@@ -40,6 +40,18 @@ export const faqItems: FaqItem[] = [
     question: "변호사 연결 서비스는 어떻게 이용하나요?",
     answer: "변호사 연결 서비스는 제공하지 않고 있으며, 추후 업데이트를 통해 안내드릴 예정입니다."
   },
+  {
+    id:"faq7",
+    category: "이용 방법",
+    question: "계정은 어떻게 생성하나요?",
+    answer: "계정 생성은 홈페이지 상단의 '회원가입' 버튼을 클릭하여 가입 할 수 있습니다."  
+  },
+  {
+    id:"faq8",
+    category: "이용 방법",
+    question: "계정을 잃어 버렸어요. 어떻게 찾을 수 있나요?",
+    answer: "계정을 찾으려면 고객 센터에 '아이디·비밀번호 찾기'를 클릭하여 진행하시면 됩니다."
+  },
 ];
 
 export const relatedQuestions: RelatedQuestion[] = [

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 import { KakaoLoginButton } from "../components/kakaoLogin"
@@ -17,9 +17,8 @@ export const LoginForm = () => {
     try {
       await login({ email, password });
       navigate("/");
-    } catch {
-      // 에러는 useAuth의 error 상태로 화면에 표시됨
-      console.error("로그인 실패");
+    } catch(err) {
+      console.error("로그인 실패",err);
     }
   };
 

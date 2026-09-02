@@ -3,9 +3,10 @@
 .env
 .env.*
 
-# LoRA 어댑터 가중치, RAG 인덱스 (용량 크고 재생성 가능 - git에 안 올림)
+# 모델 가중치 / 인덱스 (용량 크고 재생성/재전송 가능 - git에 안 올림, scp로 EC2에 직접 전송)
 weights/
 indexes/
+kobart/
 
 # Python
 __pycache__/

@@ -30,8 +30,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** 로그인 시 이메일로 회원 조회 */
     Optional<User> findByEmail(String email);
 
+    /** 아이디 찾기/비밀번호 재설정 인증 시 전화번호로 회원 조회 */
+    Optional<User> findByPhone(String phone);
+
     /** 회원가입 시 이메일 중복 확인 (탈퇴 회원 포함 — DB에 UNIQUE 제약이 걸려 있으므로) */
     boolean existsByEmail(String email);
+
+    /** 회원가입 시 전화번호 중복 확인 */
+    boolean existsByPhone(String phone);
 
     /** 닉네임 중복 확인 */
     boolean existsByNickname(String nickname);

@@ -41,6 +41,10 @@ public class User {
     @Column(name = "password", length = 255)
     private String password;
 
+    /** 전화번호. 숫자만 정규화해서 저장한다(하이픈 없이, 예: 01012345678). 아이디 찾기/비밀번호 재설정 인증 수단. */
+    @Column(name = "phone", length = 20, unique = true)
+    private String phone;
+
     /** 카카오/네이버 등이 내려주는 고유 회원 식별자 */
     @Column(name = "social_id", length = 255)
     private String socialId;
@@ -97,11 +101,12 @@ public class User {
      * 이메일 회원가입용.
      * @param encodedPassword 반드시 서비스에서 PasswordEncoder 로 암호화한 값을 넘길 것
      */
-    public static User createLocalUser(String email, String encodedPassword, String nickname) {
+    public static User createLocalUser(String email, String encodedPassword, String nickname, String phone) {
         User user = new User();
         user.email = email;
         user.password = encodedPassword;
         user.nickname = nickname;
+        user.phone = phone;
         user.status = UserStatus.ACTIVE;
         user.isAdmin = false;
         return user;
@@ -220,6 +225,7 @@ public class User {
     public void anonymize() {
         this.email = null;
         this.password = null;
+        this.phone = null;
         this.socialId = null;
         this.socialProvider = null;
         this.profileImg = null;
@@ -246,6 +252,7 @@ public class User {
     // ------------------------------------------------------------------
     public Long getUserId() { return userId; }
     public String getEmail() { return email; }
+    public String getPhone() { return phone; }
     public String getPassword() { return password; }
     public String getSocialId() { return socialId; }
     public String getNickname() { return nickname; }
@@ -257,3 +264,4 @@ public class User {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
 }
+
