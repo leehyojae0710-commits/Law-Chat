@@ -66,7 +66,7 @@ export const PrecedentResultCard = ({
           </p>
           <p className="font-semibold mb-1 break-words">{precedent.title}</p>
           <p className="text-sm text-gray-600 break-words whitespace-pre-line">
-            {precedent.summary? toLineBreaks(truncateText(precedent.summary, 100)):""}
+            {precedent.summary ? (expanded ? (toLineBreaks(precedent.summary)) : (toLineBreaks(truncateText(precedent.summary, 100)))) : ""}
           </p>
         </button>
 

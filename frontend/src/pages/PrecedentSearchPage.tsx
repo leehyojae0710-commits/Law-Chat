@@ -2,7 +2,6 @@ import { useAuthStore } from "../store/authStore";
 import { usePrecedentSearch } from "../features/precedent-search/hooks/usePrecedentSearch";
 import { useBookmarks } from "../features/precedent-search/hooks/useBookmarks";
 import { SearchBar } from "../features/precedent-search/components/SearchBar";
-import { AiSimilaritySwitch } from "../features/precedent-search/components/AiSimilaritySwitch";
 import { CategoryFilter, precedentCategories } from "../features/precedent-search/components/CategoryFilter";
 import { PrecedentResultCard } from "../features/precedent-search/components/PrecedentResultCard";
 import { SavedPrecedentPanel } from "../features/precedent-search/components/SavedPrecedentPanel";
@@ -14,8 +13,6 @@ export const PrecedentSearchPage = () => {
   const {
     category,
     selectCategory,
-    aiSimilarity,
-    setAiSimilarity,
     search,
     page,
     setPage,
@@ -46,19 +43,24 @@ export const PrecedentSearchPage = () => {
           </div>
 
           <SearchBar onSearch={search} />
-          <AiSimilaritySwitch checked={aiSimilarity} onChange={setAiSimilarity} />
+          {/* <AiSimilaritySwitch checked={aiSimilarity} onChange={setAiSimilarity} /> */}
           <CategoryFilter categories={precedentCategories} active={category} onSelect={selectCategory} />
 
-          {isLoading && <p className="text-sm text-gray-400">불러오는 중...</p>}
+          {isLoading && items.length === 0 && (
+            <p className="text-sm text-gray-400">불러오는 중...</p>
+          )}
           {!isLoading && error && <p className="text-sm text-red-500">{error}</p>}
           {!isLoading && !error && items.length === 0 && (
             <p className="text-sm text-gray-400">검색 결과가 없어요</p>
           )}
 
-          {!isLoading && !error && items.length > 0 && (
+          {items.length > 0 && (
             <>
-              <p className="text-xs text-gray-400">총 {totalElements.toLocaleString()}건</p>
-              <div className="space-y-3">
+              <p className="text-xs text-gray-400">
+                총 {totalElements.toLocaleString()}건
+                {isLoading && <span className="ml-2 text-gray-300">불러오는 중...</span>}
+              </p>
+              <div className={`space-y-3 ${isLoading ? "opacity-50" : ""}`}>
                 {items.map((p) => (
                   <PrecedentResultCard
                     key={p.id}
