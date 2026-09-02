@@ -80,3 +80,5 @@ export interface PrecedentSearchParams {
   /** "yyyy-MM-dd" */
   decidedDateTo?: string;
 }
+
+export type CaseCategory = "전체" | "민사" | "형사" | "일반행정" | "가사" | "세무";

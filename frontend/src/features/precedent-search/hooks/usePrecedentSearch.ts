@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { searchPrecedents } from "../../../api/precedents";
-import type { Precedent, PrecedentSearchParams } from "../types";
+import type { CaseCategory, Precedent, PrecedentSearchParams } from "../types";
 
-const ALL_CATEGORY = "전체";
+const ALL_CATEGORY: CaseCategory = "전체";
 const PAGE_SIZE = 10;
 
 export const usePrecedentSearch = () => {
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState(ALL_CATEGORY);
+  const [category, setCategory] = useState<CaseCategory>(ALL_CATEGORY);
   const [aiSimilarity, setAiSimilarity] = useState(true);
   const [page, setPage] = useState(0);
 
@@ -51,7 +51,7 @@ export const usePrecedentSearch = () => {
     setPage(0);
   }, []);
 
-  const selectCategory = useCallback((next: string) => {
+  const selectCategory = useCallback((next: CaseCategory) => {
     setCategory(next);
     setPage(0);
   }, []);

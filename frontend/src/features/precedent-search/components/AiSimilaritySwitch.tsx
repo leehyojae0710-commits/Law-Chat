@@ -5,7 +5,7 @@ interface AiSimilaritySwitchProps {
 
 export const AiSimilaritySwitch = ({ checked, onChange }: AiSimilaritySwitchProps) => {
   return (
-    <div className="flex items-center justify-between border rounded-lg p-4">
+    <div className="flex min-w-0 items-center justify-between border rounded-lg p-4">
       <div>
         <p className="text-sm font-medium">AI 유사 단어 검색</p>
         <p className="text-xs text-gray-500">

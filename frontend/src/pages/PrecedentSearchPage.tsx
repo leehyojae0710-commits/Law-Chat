@@ -1,10 +1,9 @@
 import { useAuthStore } from "../store/authStore";
-import { precedentCategories } from "../features/precedent-search/data";
 import { usePrecedentSearch } from "../features/precedent-search/hooks/usePrecedentSearch";
 import { useBookmarks } from "../features/precedent-search/hooks/useBookmarks";
 import { SearchBar } from "../features/precedent-search/components/SearchBar";
 import { AiSimilaritySwitch } from "../features/precedent-search/components/AiSimilaritySwitch";
-import { CategoryFilter } from "../features/precedent-search/components/CategoryFilter";
+import { CategoryFilter, precedentCategories } from "../features/precedent-search/components/CategoryFilter";
 import { PrecedentResultCard } from "../features/precedent-search/components/PrecedentResultCard";
 import { SavedPrecedentPanel } from "../features/precedent-search/components/SavedPrecedentPanel";
 import { Disclaimer } from "../components/layout/Disclaimer";
@@ -37,8 +36,8 @@ export const PrecedentSearchPage = () => {
 
   return (
     <div className="min-h-screen bg-violet-50 py-5">
-      <div className="max-w-6xl mx-auto px-8 py-10 grid grid-cols-[1fr_320px] gap-6 bg-white rounded-xl shadow-sm">
-        <div className="space-y-4">
+      <div className="max-w-6xl mx-auto px-8 py-10 grid grid-cols-[minmax(0,1fr)_320px] gap-6 ... bg-white rounded-xl shadow-sm">
+        <div className="space-y-4 min-w-0">
           <div>
             <h1 className="text-2xl font-bold">판례 검색</h1>
             <p className="text-gray-600 mt-1">
@@ -73,21 +72,46 @@ export const PrecedentSearchPage = () => {
             </>
           )}
 
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 pt-4">
-              {Array.from({ length: totalPages }, (_, i) => (
+          {totalPages > 1 && (() => {
+            const pageSize = 10;
+            const windowStart = Math.floor(page / pageSize) * pageSize;
+            const windowEnd = Math.min(windowStart + pageSize, totalPages);
+            const pageNumbers = Array.from(
+              { length: windowEnd - windowStart },
+              (_, i) => windowStart + i
+            );
+
+            return (
+              <div className="flex justify-center items-center gap-2 pt-4">
                 <button
-                  key={i}
-                  onClick={() => setPage(i)}
-                  className={`w-8 h-8 rounded-full text-sm ${
-                    page === i ? "bg-purple-600 text-white" : "text-gray-500 hover:bg-gray-100"
-                  }`}
+                  onClick={() => setPage(Math.max(windowStart - pageSize, 0))}
+                  disabled={windowStart === 0}
+                  className="w-8 h-8 rounded-full text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30"
                 >
-                  {i + 1}
+                  ‹
                 </button>
-              ))}
-            </div>
-          )}
+
+                {pageNumbers.map((i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPage(i)}
+                    className={`w-8 h-8 rounded-full text-sm shrink-0 ${page === i ? "bg-purple-600 text-white" : "text-gray-500 hover:bg-gray-100"
+                      }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setPage(Math.min(windowStart + pageSize, totalPages - 1))}
+                  disabled={windowEnd >= totalPages}
+                  className="w-8 h-8 rounded-full text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                >
+                  ›
+                </button>
+              </div>
+            );
+          })()}
 
           <Disclaimer />
         </div>
