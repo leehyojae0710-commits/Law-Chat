@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Precedent, PrecedentAiSummary, PrecedentDetail } from "../types";
 import { getPrecedentAiSummary, getPrecedentDetail } from "../../../api/precedents";
-import { toLineBreaks } from "../hooks/usePrecedentTextFome.ts";
+import { toLineBreaks, truncateText } from "../hooks/usePrecedentTextFome.ts";
 
 interface PrecedentResultCardProps {
   precedent: Precedent;
@@ -66,7 +66,7 @@ export const PrecedentResultCard = ({
           </p>
           <p className="font-semibold mb-1 break-words">{precedent.title}</p>
           <p className="text-sm text-gray-600 break-words whitespace-pre-line">
-            {precedent.summary? toLineBreaks(precedent.summary):""}
+            {precedent.summary? toLineBreaks(truncateText(precedent.summary, 100)):""}
           </p>
         </button>
 
