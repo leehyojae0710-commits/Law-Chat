@@ -17,7 +17,7 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: "USER" | "ADMIN";
+  isAdmin: boolean;
 }
 
 export interface mockUser {

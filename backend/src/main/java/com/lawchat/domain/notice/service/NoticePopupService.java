@@ -48,7 +48,6 @@ public class NoticePopupService {
         NoticePopup popup = NoticePopup.create(
                 request.getTitle(),
                 request.getFileUrl(),
-                request.getLinkUrl(),
                 request.getAltText(),
                 request.getStartDate(),
                 request.getEndDate()
@@ -64,7 +63,6 @@ public class NoticePopupService {
         popup.update(
                 request.getTitle(),
                 request.getFileUrl(),
-                request.getLinkUrl(),
                 request.getAltText(),
                 request.getStartDate(),
                 request.getEndDate()

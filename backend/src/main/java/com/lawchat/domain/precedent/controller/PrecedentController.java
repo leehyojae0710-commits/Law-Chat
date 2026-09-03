@@ -1,5 +1,6 @@
 package com.lawchat.domain.precedent.controller;
 
+import com.lawchat.domain.precedent.dto.response.PrecedentAiSummaryResponse;
 import com.lawchat.domain.precedent.dto.response.PrecedentBookmarkResponse;
 import com.lawchat.domain.precedent.dto.response.PrecedentDetailResponse;
 import com.lawchat.domain.precedent.dto.response.PrecedentListResponse;
@@ -25,6 +26,7 @@ import java.util.List;
  * 프론트 매칭:
  *  - SearchBar, CategoryFilter, AiSimilaritySwitch -> GET /precedents
  *  - PrecedentResultCard 클릭(상세)                -> GET /precedents/{precedentId}
+ *  - PrecedentResultCard "AI 요약 보기"             -> GET /precedents/{precedentId}/ai-summary
  *  - SavedPrecedentPanel                           -> GET /precedents/bookmarks,
  *                                                       POST/DELETE /precedents/{precedentId}/bookmark
  *
@@ -75,6 +77,15 @@ public class PrecedentController {
     public ResponseEntity<PrecedentDetailResponse> getDetail(@AuthenticationPrincipal Long userId,
                                                                @PathVariable Long precedentId) {
         return ResponseEntity.ok(precedentService.getDetail(userId, precedentId));
+    }
+
+    /**
+     * AI(KoBART) 판례요약. legal_chatbot_ai POST /summarize/precedent 를 실시간 호출한다(저장 안 함).
+     * 목록/상세와 마찬가지로 비로그인도 열람 가능하다.
+     */
+    @GetMapping("/{precedentId}/ai-summary")
+    public ResponseEntity<PrecedentAiSummaryResponse> getAiSummary(@PathVariable Long precedentId) {
+        return ResponseEntity.ok(precedentService.getAiSummary(precedentId));
     }
 
     @PostMapping("/{precedentId}/bookmark")

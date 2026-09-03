@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
@@ -30,6 +31,11 @@ public class NationalLawApiClient {
     private static final String SEARCH_PATH = "/lawSearch.do";
     private static final String DETAIL_PATH = "/lawService.do";
     private static final String TARGET = "prec";
+
+    // db_loader.py의 _xtext()와 동일한 방식으로 <br/> 등 잔여 HTML 태그를 정제
+    private static final Pattern BR_TAG = Pattern.compile("<br\\s*/?>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ANY_TAG = Pattern.compile("<[^>]+>");
+    private static final Pattern MULTI_NEWLINE = Pattern.compile("\\n{3,}");
 
     private final RestClient lawOpenApiRestClient;
 
@@ -210,7 +216,7 @@ public class NationalLawApiClient {
         }
     }
 
-    /** 부모 엘리먼트 내 특정 태그의 텍스트 값을 추출 (직계/하위 포함) */
+    /** 부모 엘리먼트 내 특정 태그의 텍스트 값을 추출 (직계/하위 포함), <br/> 등 잔여 태그 정제 */
     private String textOf(Element parent, String tagName) {
         if (parent == null) {
             return null;
@@ -218,9 +224,27 @@ public class NationalLawApiClient {
         NodeList list = parent.getElementsByTagName(tagName);
         if (list.getLength() > 0 && list.item(0) != null) {
             String text = list.item(0).getTextContent();
-            return (text == null || text.isBlank()) ? null : text.trim();
+            if (text == null || text.isBlank()) {
+                return null;
+            }
+            String cleaned = cleanText(text);
+            return cleaned.isBlank() ? null : cleaned;
         }
         return null;
+    }
+
+    /**
+     * API 응답 텍스트에 섞여 들어오는 &lt;br/&gt; 등 잔여 HTML 태그를 정제한다.
+     * db_loader.py의 _xtext() 정제 로직과 동일하게:
+     *   1) &lt;br/&gt; -&gt; 줄바꿈
+     *   2) 그 외 모든 태그 제거
+     *   3) 3줄 이상 연속 줄바꿈은 2줄로 축소
+     */
+    private String cleanText(String text) {
+        String cleaned = BR_TAG.matcher(text).replaceAll("\n");
+        cleaned = ANY_TAG.matcher(cleaned).replaceAll("");
+        cleaned = MULTI_NEWLINE.matcher(cleaned).replaceAll("\n\n");
+        return cleaned.trim();
     }
 
     private int parseIntOrZero(String value) {

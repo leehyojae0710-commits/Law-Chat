@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Conversation } from "../types";
 import {
-  deleteConversation as deleteConversationApi,
-  listConversations as listConversationsApi,
-  toggleFavoriteConversation as toggleFavoriteConversationApi,
-} from "../../../api/chat";
-import {
   mockDeleteConversation,
   mockListConversations,
   mockToggleFavoriteConversation,
 } from "../mockChat";
+import {
+  deleteConversationApi,
+  listConversationsApi,
+  toggleFavoriteConversationApi,
+} from "../../../api/chat";
 
 // 백엔드가 준비되기 전에는 .env의 VITE_USE_MOCK_CHAT=true 로 mock 데이터를 사용합니다.
 // 백엔드 연동 시 .env에서 VITE_USE_MOCK_CHAT=false 로만 바꾸면 실제 API를 호출합니다.

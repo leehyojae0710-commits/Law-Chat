@@ -33,6 +33,21 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 필터가 request 에 담아둔 사유 코드를 꺼낸다.
+     *
+     * 프론트가 이 code 값으로 안내 문구를 분기할 수 있게 하기 위함이다.
+     *   SESSION_INVALIDATED : 다른 기기에서 로그인되어 밀려남 -> "다른 기기에서 로그인되었습니다"
+     *   INVALID_TOKEN       : 토큰이 없거나 만료/위조         -> "로그인이 필요합니다"
+     */
+    private ErrorCode resolveErrorCode(HttpServletRequest request) {
+        Object reason = request.getAttribute(JwtAuthenticationFilter.ATTR_AUTH_FAIL_REASON);
+        if (ErrorCode.SESSION_INVALIDATED.name().equals(reason)) {
+            return ErrorCode.SESSION_INVALIDATED;
+        }
+        return ErrorCode.INVALID_TOKEN;
+    }
+
     @Override
     public void commence(HttpServletRequest request,
                          HttpServletResponse response,
@@ -42,10 +57,11 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 
-        ErrorResponse body = ErrorResponse.of(
-                ErrorCode.INVALID_TOKEN,
-                ErrorCode.INVALID_TOKEN.getMessage()
-        );
+        // JwtAuthenticationFilter 가 남긴 차단 사유가 있으면 그 코드로 응답한다.
+        // 없으면 기본값(INVALID_TOKEN = 그냥 로그인이 필요한 상황)을 쓴다.
+        ErrorCode errorCode = resolveErrorCode(request);
+
+        ErrorResponse body = ErrorResponse.of(errorCode, errorCode.getMessage());
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 }

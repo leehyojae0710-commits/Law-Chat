@@ -21,6 +21,7 @@ public enum ErrorCode {
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다."),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "인증이 만료되었습니다. 다시 로그인해 주세요."),
+    SESSION_INVALIDATED(HttpStatus.UNAUTHORIZED, "다른 기기에서 로그인되어 로그아웃되었습니다."),
 
     // 403 - FORBIDDEN
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
@@ -32,6 +33,7 @@ public enum ErrorCode {
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 공지사항입니다."),
     POPUP_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 팝업입니다."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다."),
+    INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 문의입니다."),
 
     // 409 - CONFLICT
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
@@ -39,11 +41,13 @@ public enum ErrorCode {
     DUPLICATE_PHONE(HttpStatus.CONFLICT, "이미 사용 중인 전화번호입니다."),
     EMAIL_ALREADY_REGISTERED_LOCALLY(HttpStatus.CONFLICT,
             "해당 이메일로 이미 가입된 계정이 있습니다. 이메일 로그인을 이용해 주세요."),
+    INQUIRY_ALREADY_ANSWERED(HttpStatus.CONFLICT, "이미 답변이 등록된 문의는 삭제할 수 없습니다."),
 
     // 502 - 외부 연동 실패
     KAKAO_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "카카오 로그인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."),
     NAVER_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "네이버 로그인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."),
     EMAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "이메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    PRECEDENT_AI_SUMMARY_FAILED(HttpStatus.BAD_GATEWAY, "AI 판례요약에 실패했습니다. 잠시 후 다시 시도해 주세요."),
 
     // 400 - notice 도메인 추가
     INVALID_POPUP_PERIOD(HttpStatus.BAD_REQUEST, "노출 종료 일시는 시작 일시보다 뒤여야 합니다."),

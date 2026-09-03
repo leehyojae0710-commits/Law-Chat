@@ -5,6 +5,7 @@ import com.lawchat.domain.user.dto.request.LoginRequest;
 import com.lawchat.domain.user.dto.request.NaverLoginRequest;
 import com.lawchat.domain.user.dto.request.SignupRequest;
 import com.lawchat.domain.user.dto.response.AuthResponse;
+import com.lawchat.domain.user.dto.response.AuthVerifyResponse;
 import com.lawchat.domain.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -118,6 +119,40 @@ public class AuthController {
     public ResponseEntity<AuthResponse> naverLogin(@Valid @RequestBody NaverLoginRequest request) {
         return ResponseEntity.ok(
                 userService.naverLoginWithCode(request.code(), request.state(), request.redirectUri()));
+    }
+
+    /**
+     * 토큰 유효성 확인
+     * GET /api/auth/verify
+     *
+     * ★ 이 메서드 본문에 도달했다는 사실 자체가 "토큰이 유효하다"는 증명이다.
+     *   JwtAuthenticationFilter 가 이미 아래를 전부 마쳤기 때문이다.
+     *     1. JWT 서명 검증 (위조 여부)
+     *     2. 만료 시각 검증 (발급 후 10시간)
+     *     3. 토큰의 sessionToken 과 DB users.session_token 대조 (동시접속 차단)
+     *     4. 탈퇴 회원 여부 확인
+     *   하나라도 실패하면 여기 오지 못하고 401 이 응답된다.
+     *   그래서 이 메서드 안에 별도 검증 로직이 없는 것이 정상이다.
+     *
+     * [프론트 사용 시나리오]
+     *   앱 시작 시(새로고침/브라우저 재접속) 저장소에 토큰이 남아 있어도
+     *   그것이 아직 살아있는지는 알 수 없다. 이 API 를 한 번 호출해서 판단한다.
+     *     200 -> 유효. 로그인 상태를 유지하고 응답값으로 화면을 그린다.
+     *     401 -> 무효. 저장소를 비우고 로그인 화면으로 보낸다.
+     *            응답 body 의 code 로 사유를 구분할 수 있다.
+     *              SESSION_INVALIDATED : 다른 기기에서 로그인되어 밀려남
+     *              INVALID_TOKEN       : 토큰 없음/만료/위조
+     *
+     * [GET /api/users/me 와의 차이]
+     *   users/me 는 마이페이지용 "상세 프로필 조회"이고,
+     *   이 API 는 "토큰이 살아있는지 확인"이 목적이다.
+     *   앱이 켜질 때마다 호출되는 API 라 불필요한 개인정보를 매번 흘리지 않도록
+     *   응답을 userId/nickname/isAdmin 세 개로 최소화했다.
+     *   상세 프로필이 필요한 화면에서는 users/me 를 사용하면 된다.
+     */
+    @GetMapping("/verify")
+    public ResponseEntity<AuthVerifyResponse> verify(@AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(userService.verifyToken(userId));
     }
 
     /**

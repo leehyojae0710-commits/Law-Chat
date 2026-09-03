@@ -4,8 +4,8 @@ import type { NoticePopup } from "./types";
 export const mockPopupNotices: NoticePopup[] = [
   {
     popupId: 1,
+    noticeId: null,
     title: "[필독] 개인정보처리방침 및 이용약관 개정 안내",
     fileUrl: "https://placehold.co/440x300",
-    linkUrl: "/notices/1",
   },
 ];
