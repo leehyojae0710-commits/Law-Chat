@@ -3,11 +3,18 @@ import type { InquiryCategory, InquiryStatus } from "../features/support/types";
 import type { Notice, NoticeCategory, NoticeListItem, NoticePopup, NoticePopupAdmin, PageResponse } from "../features/notice/types";
 
 // ===== 대시보드 =====
+// 좋아요는 집계하지 않음. "신고(싫어요) 건수 + 사유 카테고리별 분포"만 응답으로 온다.
+// (features/chat/types.ts의 FeedbackReasonCode와 code 값이 1:1로 대응됨)
+export interface DashboardReasonStat {
+  code: string;
+  label: string;
+  count: number;
+}
+
 export interface DashboardStats {
-  totalDislikes: number;
-  weeklyDislikes: number;
-  totalLikes: number;
-  dislikeRate: number;
+  totalFeedbackCount: number;
+  weeklyFeedbackCount: number;
+  reasonBreakdown: DashboardReasonStat[];
 }
 
 export const getDashboardStats = async (): Promise<DashboardStats> => {
