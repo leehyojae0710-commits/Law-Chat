@@ -1,7 +1,6 @@
 import { getMe } from "../../../api/auth";
 
 export const Profile =  () => {
-    const userToken = sessionStorage.getItem("userToken");
     let userName = "";
     let userEmail = "";
     let userisAdmin = false;
