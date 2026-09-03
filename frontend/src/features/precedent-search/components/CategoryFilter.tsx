@@ -1,12 +1,16 @@
+import type { CaseCategory } from "../types";
+
 interface CategoryFilterProps {
-  categories: string[];
-  active: string;
-  onSelect: (category: string) => void;
+  categories: CaseCategory[];
+  active: CaseCategory;
+  onSelect: (category: CaseCategory) => void;
 }
+
+export const precedentCategories: CaseCategory[] = [ "전체","민사", "형사", "일반행정", "가사", "세무"];
 
 export const CategoryFilter = ({ categories, active, onSelect }: CategoryFilterProps) => {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       {categories.map((c) => (
         <button
           key={c}
