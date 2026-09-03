@@ -90,13 +90,14 @@ ai:
   legal-chatbot:
     base-url: http://3.89.248.99:8000
     connect-timeout-ms: 5000
-    read-timeout-ms: 60000
+    read-timeout-ms: 600000
 
 law-api:
   oc: "202608110004094829"
   base-url: http://www.law.go.kr/DRF
   sync:
-    enabled-on-startup: true
+    enabled-on-startup: false
+    startup-max-pages: 4000   # 필요하면 늘리세요
     cron: "0 0 3 * * *"
 
 user:

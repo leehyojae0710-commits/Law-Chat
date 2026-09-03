@@ -21,7 +21,8 @@ import java.time.format.DateTimeParseException;
  * 호출 경로 (모두 이 클래스로 모인다 - 트리거만 다를 뿐 로직은 동일):
  *   1) 서버 기동 시 1회 : infra.lawapi.scheduler.PrecedentSyncScheduler (ApplicationRunner)
  *   2) 매일 정기 배치   : infra.lawapi.scheduler.PrecedentSyncScheduler (@Scheduled)
- *   3) 수동 실행        : domain.precedent.controller.PrecedentSyncController (POST /api/admin/precedents/sync)
+ *   3) 수동 실행(조건부) : domain.precedent.controller.PrecedentSyncController (POST /api/admin/precedents/sync)
+ *   4) 수동 실행(전체)   : 위 컨트롤러에 all=true 파라미터 -&gt; syncAll()
  *
  * 판례는 사건번호(case_number) 기준으로 upsert한다 (테이블에 UNIQUE 제약이 걸려 있음).
  */
@@ -32,6 +33,7 @@ public class PrecedentSyncService {
 
     private static final DateTimeFormatter API_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final int DISPLAY_PER_PAGE = 100; // law.go.kr 목록 조회 API의 페이지당 최대 건수
+    private static final long DETAIL_FETCH_DELAY_MS = 150; // 상세조회 건당 호출 사이 지연 (공공 API 과호출 차단 방지)
 
     private final NationalLawApiClient nationalLawApiClient;
     private final PrecedentRepository precedentRepository;
@@ -60,12 +62,16 @@ public class PrecedentSyncService {
                 if (syncOne(summary.serialNumber())) {
                     processed++;
                 }
+                sleepBetweenDetailCalls();
             }
 
             boolean isLastPage = (long) page * DISPLAY_PER_PAGE >= result.totalCount();
             if (isLastPage) {
                 break;
             }
+
+            log.info("판례 동기화 진행 중. query={}, date={}, page={}, totalCnt={}, 누적 처리={}",
+                    query, date, page, result.totalCount(), processed);
         }
 
         log.info("판례 동기화 완료. query={}, date={}, 처리 건수={}", query, date, processed);
@@ -79,6 +85,36 @@ public class PrecedentSyncService {
     public int syncRecent() {
         LocalDate yesterday = LocalDate.now().minusDays(1);
         return syncByQuery(null, yesterday, 50);
+    }
+
+    /**
+     * 검색어/등록일자 조건 없이 law.go.kr에 등록된 판례 전체를 최신순으로 페이지네이션하며 수집한다.
+     * 법제처가 2013년 공개 당시 이미 "법원판례 8만3천여건"이라 밝혔고 그 뒤로 계속 쌓였으므로,
+     * 지금 규모는 수십만 건일 수 있다 -&gt; 완료까지 몇 시간~반나절이 걸릴 수 있는 대량 작업이다.
+     *
+     * 사건번호 기준 upsert라 안전하게 재실행할 수 있다: 중간에 서버가 죽거나 멈춰도 다시 호출하면
+     * 처음부터 페이지를 다시 넘기긴 하지만, 이미 저장된 건은 새로 만들지 않고 내용만 갱신한다.
+     *
+     * @param maxPages 최대 조회 페이지 수 (페이지당 {@value #DISPLAY_PER_PAGE}건). 전체를 다 받으려면
+     *                 예상 총 건수 / {@value #DISPLAY_PER_PAGE} 이상으로 넉넉히 잡아야 한다.
+     */
+    public int syncAll(int maxPages) {
+        log.info("판례 전체 수집을 시작합니다. maxPages={} (페이지당 {}건)", maxPages, DISPLAY_PER_PAGE);
+        int processed = syncByQuery(null, null, maxPages);
+        log.info("판례 전체 수집이 종료되었습니다. 처리 건수={}", processed);
+        return processed;
+    }
+
+    /**
+     * 상세조회(건당 API 1회 호출) 사이에 짧은 지연을 준다.
+     * 특히 syncAll()처럼 수천 페이지를 순회할 때, 지연 없이 두드리면 공공 API가 요청을 차단할 수 있다.
+     */
+    private void sleepBetweenDetailCalls() {
+        try {
+            Thread.sleep(DETAIL_FETCH_DELAY_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**

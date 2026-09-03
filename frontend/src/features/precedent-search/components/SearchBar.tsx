@@ -20,7 +20,7 @@ export const SearchBar = ({ onSearch, defaultValue = "" }: SearchBarProps) => {
           if (e.key === "Enter") submit();
         }}
         placeholder="사건명·키워드·조문으로 검색해 보세요"
-        className="flex-1 border rounded-lg px-4 py-3 text-sm"
+        className="flex-1 min-w-0 border rounded-lg px-4 py-3 text-sm"
       />
       <button
         onClick={submit}
