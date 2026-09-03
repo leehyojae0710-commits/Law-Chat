@@ -3,6 +3,7 @@ package com.lawchat.domain.user.service;
 import com.lawchat.domain.user.dto.request.LoginRequest;
 import com.lawchat.domain.user.dto.request.SignupRequest;
 import com.lawchat.domain.user.dto.response.AuthResponse;
+import com.lawchat.domain.user.dto.response.AuthVerifyResponse;
 import com.lawchat.domain.user.dto.response.UserProfileResponse;
 import com.lawchat.domain.user.entity.SocialProvider;
 import com.lawchat.domain.user.entity.User;
@@ -248,6 +249,17 @@ public class UserService {
 
     public UserProfileResponse getMyProfile(Long userId) {
         return UserProfileResponse.from(getUser(userId));
+    }
+
+    /**
+     * 토큰 유효성 확인용 최소 정보 조회 (GET /api/auth/verify).
+     *
+     * getMyProfile 과 조회 대상은 같지만 응답 DTO 가 다르다.
+     * 이 API 는 앱이 켜질 때마다 호출되므로, 목적에 불필요한 개인정보
+     * (email, profileImg, createdAt 등)까지 매번 내려보내지 않도록 분리했다.
+     */
+    public AuthVerifyResponse verifyToken(Long userId) {
+        return AuthVerifyResponse.from(getUser(userId));
     }
 
     @Transactional
