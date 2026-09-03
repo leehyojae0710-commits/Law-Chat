@@ -73,6 +73,18 @@ public class User {
     private Boolean isAdmin;
 
     /**
+     * 현재 유효한 로그인 세션 식별값 (동시접속 차단용).
+     *
+     * 로그인할 때마다 새 UUID 로 덮어쓴다. 컬럼이 하나뿐이므로
+     * "현재 유효한 로그인은 항상 딱 하나"가 구조적으로 보장된다.
+     * 발급된 JWT 안에도 같은 값이 들어가고, 매 요청마다 이 값과 대조한다.
+     *
+     * null 이면 로그인 상태가 아니다(= 어떤 토큰도 통과 못 함).
+     */
+    @Column(name = "session_token", length = 64)
+    private String sessionToken;
+
+    /**
      * @CreationTimestamp : INSERT 시 Hibernate 가 현재 시각을 채워준다.
      * updatable = false 로 두어 이후 UPDATE 문에서 아예 제외시킨다.
      */
@@ -169,13 +181,43 @@ public class User {
         this.password = encodedPassword;
     }
 
-    /** 로그인 성공 시 상태를 ACTIVE 로 되돌린다. */
-    public void login() {
+    /**
+     * 로그인 성공 시 호출.
+     *
+     * ★ 동시접속 차단의 핵심 지점
+     *   sessionToken 을 새 값으로 덮어쓴다. 이 컬럼은 하나뿐이므로
+     *   이전 기기에 발급됐던 토큰 안의 값은 그 즉시 DB 값과 달라진다.
+     *   → 이전 기기가 다음 요청을 보내는 순간 401 로 차단된다.
+     *
+     * @param newSessionToken 서비스에서 생성한 새 세션 식별값(UUID)
+     */
+    public void login(String newSessionToken) {
         this.status = UserStatus.ACTIVE;
+        this.sessionToken = newSessionToken;
     }
 
+    /**
+     * 로그아웃.
+     *
+     * sessionToken 을 비우면 그 즉시 이 사용자에게 발급됐던 모든 JWT 가 무효가 된다.
+     * (JWT 자체는 아직 만료 전이지만, DB 대조 단계에서 걸러진다)
+     * 토큰 만료를 기다릴 필요 없이 즉시 차단되는 것이 이 방식의 장점이다.
+     */
     public void logout() {
         this.status = UserStatus.LOGOUT;
+        this.sessionToken = null;
+    }
+
+    /**
+     * 요청으로 들어온 토큰의 세션값이 현재 유효한지 검사.
+     *
+     * false 가 되는 경우는 두 가지다.
+     *   1) 로그아웃했다 (sessionToken 이 null)
+     *   2) 다른 기기에서 새로 로그인했다 (sessionToken 이 다른 값으로 바뀜)
+     */
+    public boolean isSessionValid(String tokenSessionValue) {
+        return this.sessionToken != null
+                && this.sessionToken.equals(tokenSessionValue);
     }
 
     /**
@@ -194,6 +236,7 @@ public class User {
     public void withdraw() {
         this.status = UserStatus.DELETED;
         this.deletedAt = LocalDateTime.now();
+        this.sessionToken = null; // 탈퇴 즉시 기존 토큰 무효화
     }
 
     /**
@@ -229,6 +272,7 @@ public class User {
         this.socialId = null;
         this.socialProvider = null;
         this.profileImg = null;
+        this.sessionToken = null;
         this.nickname = "탈퇴회원_" + this.userId;
     }
 
@@ -260,6 +304,7 @@ public class User {
     public SocialProvider getSocialProvider() { return socialProvider; }
     public UserStatus getStatus() { return status; }
     public Boolean getIsAdmin() { return isAdmin; }
+    public String getSessionToken() { return sessionToken; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }

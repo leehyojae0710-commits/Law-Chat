@@ -3,6 +3,7 @@ package com.lawchat.domain.user.service;
 import com.lawchat.domain.user.dto.request.LoginRequest;
 import com.lawchat.domain.user.dto.request.SignupRequest;
 import com.lawchat.domain.user.dto.response.AuthResponse;
+import com.lawchat.domain.user.dto.response.AuthVerifyResponse;
 import com.lawchat.domain.user.dto.response.UserProfileResponse;
 import com.lawchat.domain.user.entity.SocialProvider;
 import com.lawchat.domain.user.entity.User;
@@ -110,7 +111,8 @@ public class UserService {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
-        user.login();
+        // 새 세션 발급 = 기존 기기의 세션은 이 순간 무효화된다(동시접속 차단)
+        user.login(generateSessionToken());
         return issueAuthResponse(user);
     }
 
@@ -249,6 +251,17 @@ public class UserService {
         return UserProfileResponse.from(getUser(userId));
     }
 
+    /**
+     * 토큰 유효성 확인용 최소 정보 조회 (GET /api/auth/verify).
+     *
+     * getMyProfile 과 조회 대상은 같지만 응답 DTO 가 다르다.
+     * 이 API 는 앱이 켜질 때마다 호출되므로, 목적에 불필요한 개인정보
+     * (email, profileImg, createdAt 등)까지 매번 내려보내지 않도록 분리했다.
+     */
+    public AuthVerifyResponse verifyToken(Long userId) {
+        return AuthVerifyResponse.from(getUser(userId));
+    }
+
     @Transactional
     public UserProfileResponse updateProfile(Long userId, String nickname, String profileImg) {
         User user = getUser(userId);
@@ -272,6 +285,10 @@ public class UserService {
         }
 
         user.changePassword(passwordEncoder.encode(newPassword));
+
+        // 비밀번호를 바꿨는데 기존 세션이 살아있으면 의미가 없다.
+        // 로그아웃 처리해서 새 비밀번호로 다시 로그인하도록 강제한다.
+        user.logout();
     }
 
     @Transactional
@@ -298,7 +315,7 @@ public class UserService {
         User user = userRepository.findBySocialProviderAndSocialId(provider, socialId)
                 .map(existing -> {
                     existing.syncSocialProfile(profileImg);
-                    existing.login();
+                    existing.login(generateSessionToken());
                     return existing;
                 })
                 .orElseGet(() -> {
@@ -315,7 +332,29 @@ public class UserService {
         return issueAuthResponse(user);
     }
 
+    /**
+     * 세션 식별값 생성.
+     *
+     * UUID 를 쓰는 이유: 충돌 가능성이 사실상 0 이고, 예측이 불가능하며,
+     * 별도 라이브러리 없이 JDK 표준으로 만들 수 있기 때문이다.
+     * 이 값은 비밀값이 아니라 "몇 번째 로그인인지" 구분하는 표식이므로
+     * 암호학적 강도보다 유일성이 중요하다.
+     */
+    private String generateSessionToken() {
+        return UUID.randomUUID().toString();
+    }
+
+    /**
+     * 토큰 발급 공통 경로.
+     *
+     * ★ 여기서 sessionToken 을 반드시 확보한다.
+     *   회원가입/소셜 신규가입 경로는 login() 을 거치지 않고 바로 이 메서드로 오기 때문에,
+     *   빠져 있으면 sessionToken 이 null 인 채로 JWT 가 발급되어 곧바로 401 이 난다.
+     */
     private AuthResponse issueAuthResponse(User user) {
+        if (user.getSessionToken() == null) {
+            user.login(generateSessionToken());
+        }
         String accessToken = jwtTokenProvider.createAccessToken(user);
         long expiresIn = jwtTokenProvider.getExpiresInSeconds();
         return AuthResponse.of(accessToken, expiresIn, user);

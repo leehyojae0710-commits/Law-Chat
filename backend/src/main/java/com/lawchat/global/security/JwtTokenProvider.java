@@ -35,6 +35,8 @@ public class JwtTokenProvider {
     /** 토큰에 담을 커스텀 클레임 키 */
     private static final String CLAIM_IS_ADMIN = "isAdmin";
     private static final String CLAIM_NICKNAME = "nickname";
+    /** 동시접속 차단용 세션 식별값. 매 요청마다 DB 의 users.session_token 과 대조된다. */
+    private static final String CLAIM_SESSION_TOKEN = "sessionToken";
 
     private final SecretKey secretKey;
     private final long expirationMillis;
@@ -63,13 +65,14 @@ public class JwtTokenProvider {
         Date expiry = new Date(now.getTime() + expirationMillis);
 
         return Jwts.builder()
-                .subject(String.valueOf(user.getUserId()))       // sub
-                .claim(CLAIM_IS_ADMIN, user.getIsAdmin())        // 권한 판단용
-                .claim(CLAIM_NICKNAME, user.getNickname())       // 화면 표시 편의용
-                .issuedAt(now)                                   // iat
-                .expiration(expiry)                              // exp
-                .signWith(secretKey)                             // 서명
-                .compact();                                      // 문자열로 직렬화
+                .subject(String.valueOf(user.getUserId()))            // sub
+                .claim(CLAIM_IS_ADMIN, user.getIsAdmin())             // 권한 판단용
+                .claim(CLAIM_NICKNAME, user.getNickname())            // 화면 표시 편의용
+                .claim(CLAIM_SESSION_TOKEN, user.getSessionToken())   // ★ 동시접속 차단용
+                .issuedAt(now)                                        // iat
+                .expiration(expiry)                                   // exp
+                .signWith(secretKey)                                  // 서명
+                .compact();                                           // 문자열로 직렬화
     }
 
     /** 토큰 유효시간(초). 프론트에 만료까지 남은 시간을 알려줄 때 사용. */
@@ -95,6 +98,16 @@ public class JwtTokenProvider {
     /** 토큰에서 userId 추출 */
     public Long getUserId(String token) {
         return Long.valueOf(parseClaims(token).getSubject());
+    }
+
+    /**
+     * 토큰에서 세션 식별값 추출.
+     *
+     * JwtAuthenticationFilter 가 이 값을 꺼내서 DB 의 users.session_token 과 대조한다.
+     * 값이 다르면 = 다른 기기에서 새로 로그인했거나 로그아웃한 것이므로 인증을 거부한다.
+     */
+    public String getSessionToken(String token) {
+        return parseClaims(token).get(CLAIM_SESSION_TOKEN, String.class);
     }
 
     /** 토큰에서 관리자 여부 추출 */
