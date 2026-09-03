@@ -4,6 +4,8 @@ import { apiClient } from "./api/client";
 
 function App() {
   useEffect(() => {
+    const token = sessionStorage.getItem('accessToken')
+    if (!token) return;
     const refreshToken = () => {
       apiClient.get('/auth/verify')
         .then(res => console.log('토큰 검증 성공', res.data))
