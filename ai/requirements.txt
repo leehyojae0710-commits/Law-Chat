@@ -1,0 +1,25 @@
+# === 서버 ===
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-dotenv==1.0.1
+pydantic==2.10.4
+
+# === 챗봇(Llama + LoRA + RAG) ===
+torch==2.5.1
+transformers==4.47.1
+peft==0.14.0
+bitsandbytes==0.45.0
+accelerate==1.2.1
+langchain-core==0.3.28
+langchain-community==0.3.14
+langchain-huggingface==0.1.2
+faiss-cpu==1.9.0.post1   # 검색 자체는 가벼워서 CPU로 충분 (GPU는 LLM 추론에 몰아줌)
+rank_bm25==0.2.2
+lxml==5.3.0
+requests==2.32.3
+tqdm==4.67.1
+
+# === 판례요약(KoBART) ===
+# precedent_summarizer/model.py는 AutoModelForSeq2SeqLM만 쓰므로 위 transformers/torch를 공유한다.
+# (원본 requirements.txt에 있던 pandas/nltk/datasets/scikit-learn/rouge_score/ipywidgets/matplotlib는
+#  전부 "학습/평가" 전용이라 추론 서버에는 불필요 - 학습은 별도 환경(Docker/Jupyter)에서 진행)
