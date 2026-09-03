@@ -1,7 +1,7 @@
 package com.lawchat.domain.precedent.service;
 
+import com.lawchat.domain.precedent.dto.projection.PrecedentSummaryView;
 import com.lawchat.domain.precedent.dto.response.PrecedentListResponse;
-import com.lawchat.domain.precedent.entity.Precedent;
 import com.lawchat.domain.precedent.repository.PrecedentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -56,11 +56,14 @@ public class PrecedentSearchService {
                 Sort.by(Sort.Direction.DESC, "syncedAt")
         );
 
-        Page<Precedent> result = precedentRepository.search(
+        // LOB 컬럼(holding/fullText/referencedArticles/referencedCases)을 빼고 목록에 필요한
+        // 컬럼만 가져오는 프로젝션 쿼리 사용 — 검색이든 단순 페이지 이동이든 판례 전문을
+        // 매번 통째로 읽어오지 않도록 한다.
+        Page<PrecedentSummaryView> result = precedentRepository.searchSummary(
                 keyword, caseTypeName, normalizedCaseNumber, normalizedCourtType, normalizedCourtName,
                 decidedDateFrom, decidedDateTo, pageable
         );
-        return PrecedentListResponse.from(result);
+        return PrecedentListResponse.fromSummaryView(result);
     }
 
     private String normalize(String value) {

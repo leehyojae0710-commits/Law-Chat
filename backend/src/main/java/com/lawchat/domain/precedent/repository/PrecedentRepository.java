@@ -1,5 +1,6 @@
 package com.lawchat.domain.precedent.repository;
 
+import com.lawchat.domain.precedent.dto.projection.PrecedentSummaryView;
 import com.lawchat.domain.precedent.entity.Precedent;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -66,4 +67,51 @@ public interface PrecedentRepository extends JpaRepository<Precedent, Long> {
                             @Param("decidedDateFrom") LocalDate decidedDateFrom,
                             @Param("decidedDateTo") LocalDate decidedDateTo,
                             Pageable pageable);
+
+    /**
+     * 목록/검색 응답(PrecedentSummaryResponse)이 실제로 쓰는 컬럼만 조회하는 버전.
+     * 조건은 위 search()와 완전히 동일하지만 SELECT 절에 holding/fullText/referencedArticles/
+     * referencedCases(LONGTEXT)를 넣지 않아서, 페이지 이동·검색 시마다 판례 전문을 통째로
+     * 읽어오던 것을 피한다. 화면에서 판례 전문이 필요한 상세 조회(getDetail)는 기존
+     * findById(엔티티 전체 조회)를 그대로 쓰므로 영향 없다.
+     */
+    @Query("""
+            SELECT p.precedentId AS precedentId,
+                   p.caseNumber AS caseNumber,
+                   p.caseName AS caseName,
+                   p.courtName AS courtName,
+                   p.decidedDate AS decidedDate,
+                   p.summary AS summary,
+                   p.caseTypeName AS caseTypeName
+            FROM Precedent p
+            WHERE (:keyword IS NULL
+                   OR p.caseName LIKE CONCAT('%', :keyword, '%')
+                   OR p.holding LIKE CONCAT('%', :keyword, '%')
+                   OR p.summary LIKE CONCAT('%', :keyword, '%')
+                   OR p.fullText LIKE CONCAT('%', :keyword, '%')
+                   OR p.referencedArticles LIKE CONCAT('%', :keyword, '%'))
+              AND (:caseTypeName IS NULL OR p.caseTypeName = :caseTypeName)
+              AND (:caseNumber IS NULL OR p.caseNumber = :caseNumber)
+              AND (:courtName IS NULL OR p.courtName = :courtName)
+              AND (
+                    :courtType IS NULL
+                    OR (:courtType = '대법원' AND p.courtName = '대법원')
+                    OR (:courtType = '고등법원'
+                        AND (p.courtName LIKE '%고등법원%' OR p.courtName LIKE '%고법%'))
+                    OR (:courtType = '하급심'
+                        AND p.courtName <> '대법원'
+                        AND p.courtName NOT LIKE '%고등법원%'
+                        AND p.courtName NOT LIKE '%고법%')
+                  )
+              AND (:decidedDateFrom IS NULL OR p.decidedDate >= :decidedDateFrom)
+              AND (:decidedDateTo IS NULL OR p.decidedDate <= :decidedDateTo)
+            """)
+    Page<PrecedentSummaryView> searchSummary(@Param("keyword") String keyword,
+                                              @Param("caseTypeName") String caseTypeName,
+                                              @Param("caseNumber") String caseNumber,
+                                              @Param("courtType") String courtType,
+                                              @Param("courtName") String courtName,
+                                              @Param("decidedDateFrom") LocalDate decidedDateFrom,
+                                              @Param("decidedDateTo") LocalDate decidedDateTo,
+                                              Pageable pageable);
 }
