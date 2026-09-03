@@ -8,6 +8,7 @@ const badges = ["24시간 상담", "근거 조문 제시", "개인정보 마스�
 
 export const Hero = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
   return (
     <section className="bg-violet-50/60 shadow-sm">
       <div className="max-w-[1700px] mx-auto px-10 py-16">
@@ -21,19 +22,29 @@ export const Hero = () => {
             </h1>
             <p className="mt-5 text-[15px] text-slate-500 leading-relaxed whitespace-pre-line">
               법률 용어를 몰라도 괜찮습니다. 평소 쓰는 말로 질문하면
-              <br/>
+              <br />
               AI가 법률 표현으로 바꿔 근거 조문·판례와 함께 안내합니다.
             </p>
 
             <div className="mt-7 flex items-center gap-3">
               {isAuthenticated ? (
                 <data>
-                  <Link
-                    to="/chat"
-                    className="px-5 py-3 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
-                  >
-                    채팅 시작하기
-                  </Link>
+                  {isAdmin ?
+                    <Link
+                      to="/admin"
+                      className="px-5 py-3 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
+                    >
+                      관리자 페이지
+                    </Link>
+                    : (
+                      <Link
+                        to="/chat"
+                        className="px-5 py-3 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
+                      >
+                        채팅 시작하기
+                      </Link>
+                    )
+                  }
                 </data>
               ) :
                 (
