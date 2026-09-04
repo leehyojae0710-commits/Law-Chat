@@ -2,7 +2,11 @@ import { useAuthStore } from "../store/authStore";
 import { usePrecedentSearch } from "../features/precedent-search/hooks/usePrecedentSearch";
 import { useBookmarks } from "../features/precedent-search/hooks/useBookmarks";
 import { SearchBar } from "../features/precedent-search/components/SearchBar";
-import { CategoryFilter, precedentCategories } from "../features/precedent-search/components/CategoryFilter";
+import { FieldSearchInput } from "../features/precedent-search/components/FieldSearchInput";
+import { CategoryFilter } from "../features/precedent-search/components/CategoryFilter";
+import { CourtTypeFilter } from "../features/precedent-search/components/CourtTypeFilter";
+import { CourtNameSelect } from "../features/precedent-search/components/CourtNameSelect";
+import { DateRangeFilter } from "../features/precedent-search/components/DateRangeFilter";
 import { PrecedentResultCard } from "../features/precedent-search/components/PrecedentResultCard";
 import { SavedPrecedentPanel } from "../features/precedent-search/components/SavedPrecedentPanel";
 import { Disclaimer } from "../components/layout/Disclaimer";
@@ -11,8 +15,22 @@ export const PrecedentSearchPage = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const {
-    category,
-    selectCategory,
+    caseNumber,
+    searchCaseNumber,
+    caseName,
+    searchCaseName,
+    referencedArticles,
+    searchReferencedArticles,
+    categories,
+    selectCategories,
+    courtTypes,
+    selectCourtTypes,
+    courtName,
+    selectCourtName,
+    decidedDateFrom,
+    selectDecidedDateFrom,
+    decidedDateTo,
+    selectDecidedDateTo,
     search,
     page,
     setPage,
@@ -43,8 +61,41 @@ export const PrecedentSearchPage = () => {
           </div>
 
           <SearchBar onSearch={search} />
-          {/* <AiSimilaritySwitch checked={aiSimilarity} onChange={setAiSimilarity} /> */}
-          <CategoryFilter categories={precedentCategories} active={category} onSelect={selectCategory} />
+
+          <div className="grid grid-cols-1 md:grid-cols-[240px_minmax(0,1fr)] gap-x-8 gap-y-4 pt-4 border-t">
+            <div className="space-y-3">
+              <FieldSearchInput
+                label="사건번호"
+                placeholder="예) 2023가합1234"
+                value={caseNumber}
+                onSearch={searchCaseNumber}
+              />
+              <FieldSearchInput
+                label="사건명"
+                placeholder="예) 손해배상"
+                value={caseName}
+                onSearch={searchCaseName}
+              />
+              <FieldSearchInput
+                label="참조조문"
+                placeholder="예) 민법 제3조"
+                value={referencedArticles}
+                onSearch={searchReferencedArticles}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <CourtTypeFilter selected={courtTypes} onChange={selectCourtTypes} />
+              <CategoryFilter selected={categories} onChange={selectCategories} />
+              <CourtNameSelect value={courtName} onChange={selectCourtName} />
+              <DateRangeFilter
+                from={decidedDateFrom}
+                to={decidedDateTo}
+                onChangeFrom={selectDecidedDateFrom}
+                onChangeTo={selectDecidedDateTo}
+              />
+            </div>
+          </div>
 
           {isLoading && items.length === 0 && (
             <p className="text-sm text-gray-400">불러오는 중...</p>

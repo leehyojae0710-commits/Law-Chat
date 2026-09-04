@@ -3,18 +3,31 @@ import type { InquiryCategory, InquiryStatus } from "../features/support/types";
 import type { Notice, NoticeCategory, NoticeListItem, NoticePopup, NoticePopupAdmin, PageResponse } from "../features/notice/types";
 
 // ===== 대시보드 =====
-// 좋아요는 집계하지 않음. "신고(싫어요) 건수 + 사유 카테고리별 분포"만 응답으로 온다.
+// 좋아요는 집계하지 않음. "신고(싫어요) 건수 + 비율 + 사유 카테고리별 분포 + 최근 피드백"이 응답으로 온다.
 // (features/chat/types.ts의 FeedbackReasonCode와 code 값이 1:1로 대응됨)
 export interface DashboardReasonStat {
   code: string;
   label: string;
   count: number;
+  percent: number; // 0~100, 소수 첫째자리
+}
+
+export interface DashboardRecentFeedbackItem {
+  feedbackId: number;
+  title: string; // 질문 원문을 짧게 자른 것 (실제 제목 컬럼은 없음)
+  reasonCode: string;
+  reasonLabel: string;
+  reasonDetail: string; // 상세설명이 없으면 reasonLabel과 동일한 값이 옴
+  createdAt: string;
 }
 
 export interface DashboardStats {
   totalFeedbackCount: number;
   weeklyFeedbackCount: number;
+  dislikeRatioPercent: number; // 0~100, 소수 첫째자리
   reasonBreakdown: DashboardReasonStat[];
+  recentFeedback: DashboardRecentFeedbackItem[];
+  updatedAt: string; // 이 응답이 만들어진 시각 (ISO)
 }
 
 export const getDashboardStats = async (): Promise<DashboardStats> => {
