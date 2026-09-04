@@ -47,6 +47,7 @@ public enum ErrorCode {
     KAKAO_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "카카오 로그인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."),
     NAVER_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "네이버 로그인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."),
     EMAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "이메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    SMS_SEND_FAILED(HttpStatus.BAD_GATEWAY, "SMS 발송에 실패했습니다. 잠시 후 다시 시도해 주세요."),
     PRECEDENT_AI_SUMMARY_FAILED(HttpStatus.BAD_GATEWAY, "AI 판례요약에 실패했습니다. 잠시 후 다시 시도해 주세요."),
 
     // 400 - notice 도메인 추가

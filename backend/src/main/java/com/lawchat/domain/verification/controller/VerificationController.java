@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 비밀번호 재설정 전용 컨트롤러 (이메일 버전).
+ * 비밀번호 재설정 전용 컨트롤러 — EMAIL/PHONE(SMS) 둘 다 지원.
  *
  * 로그인 전에 호출해야 하므로 SecurityConfig 에 permitAll 로 등록돼 있어야 한다.
  * (/api/verification/** 로 이미 열어뒀다면 그대로 적용됨)
  *
- * 아이디 찾기 API는 전화번호 지원과 함께 나중에 별도로 추가할 예정이라 아직 포함하지 않았다.
+ * 아이디 찾기 API는 {@link IdVerificationController}(/api/verification/id/**) 참고.
  */
 @RestController
 @RequestMapping("/api/verification/password")
