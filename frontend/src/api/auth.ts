@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { LoginPayload, SignupPayload, AuthUser } from "../features/auth/types";
+import type { LoginPayload, SignupPayload, AuthUser, AuthUser_Profile } from "../features/auth/types";
 
 export interface AuthResponse {
   accessToken: string;
@@ -16,8 +16,8 @@ export const signup = async (payload: SignupPayload): Promise<AuthResponse> => {
   return res.data;
 };
 
-export const getMe = async (): Promise<AuthUser> => {
-  const res = await apiClient.get<AuthUser>("/auth/me");
+export const getMe = async (): Promise<AuthUser_Profile> => {
+  const res = await apiClient.get<AuthUser_Profile>("/users/me");
   console.log("getMe response:", res.data);
   return res.data;
 };

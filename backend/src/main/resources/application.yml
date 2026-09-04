@@ -96,7 +96,7 @@ law-api:
   oc: "202608110004094829"
   base-url: http://www.law.go.kr/DRF
   sync:
-    enabled-on-startup: true
+    enabled-on-startup: false
     cron: "0 0 3 * * *"
 
 user:

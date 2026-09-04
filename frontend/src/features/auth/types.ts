@@ -19,6 +19,14 @@ export interface AuthUser {
   email: string;
   isAdmin: boolean;
 }
+export interface AuthUser_Profile {
+  id: string;
+  email: string;
+  nickname: string;
+  phone: string;
+  isAdmin: boolean;
+  profileImg ?: string;
+}
 
 export interface mockUser {
   id: string;
