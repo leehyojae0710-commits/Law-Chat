@@ -34,9 +34,9 @@ export const Profile = () => {
         }
     }
     const uploadProfile = async () => {
-        const payload: { nickName?: string; phone?: string } = {}
+        const payload: { nickname?: string; phone?: string } = {}
         if (newNickName) {
-            payload.nickName = newNickName;
+            payload.nickname = newNickName;
             console.log("Updating nickname to:", newNickName);
         }
         if (newPhone) {
