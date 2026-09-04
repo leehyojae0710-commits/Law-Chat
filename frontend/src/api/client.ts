@@ -6,6 +6,12 @@ export const apiClient = axios.create({
     "Content-Type": "application/json",
   },
   timeout: 120000, // AI 응답 생성 대기 시간 (2분)
+  // 배열 파라미터를 "category=A&category=B" 형식(같은 이름 반복)으로 직렬화.
+  // axios 기본값은 "category[]=A&category[]=B"인데, Spring의 @RequestParam List<String>은
+  // 이 대괄호 형식을 못 읽는다 (PrecedentController#search 참고). indexes: null이 반복 형식.
+  paramsSerializer: {
+    indexes: null,
+  },
 });
 
 apiClient.interceptors.request.use(

@@ -1,8 +1,7 @@
-import { useCallback, useEffect,useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { searchPrecedents } from "../../../api/precedents";
-import type { CaseCategory, Precedent, PrecedentSearchParams } from "../types";
+import type { CaseCategory, CourtType, Precedent, PrecedentSearchParams } from "../types";
 
-const ALL_CATEGORY: CaseCategory = "전체";
 const PAGE_SIZE = 10;
 
 interface CachedResult {
@@ -11,9 +10,20 @@ interface CachedResult {
   totalElements: number;
 }
 
+// 캐시 키는 선택 "순서"가 아니라 "무엇이 선택됐는지"로만 갈려야 하므로 정렬 후 직렬화한다.
+const sortedKey = (arr: string[]) => [...arr].sort();
+
 export const usePrecedentSearch = () => {
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<CaseCategory>(ALL_CATEGORY);
+  const [caseNumber, setCaseNumberState] = useState("");
+  const [caseName, setCaseNameState] = useState("");
+  const [referencedArticles, setReferencedArticlesState] = useState("");
+  const [categories, setCategoriesState] = useState<CaseCategory[]>([]);
+  const [courtTypes, setCourtTypesState] = useState<CourtType[]>([]);
+  const [courtName, setCourtNameState] = useState<string | undefined>(undefined);
+  // yyyy-MM-dd 또는 빈 문자열(=미지정). <input type="date">가 이 형식을 그대로 주고받는다.
+  const [decidedDateFrom, setDecidedDateFromState] = useState("");
+  const [decidedDateTo, setDecidedDateToState] = useState("");
   const [aiSimilarity, setAiSimilarity] = useState(true);
   const [page, setPage] = useState(0);
 
@@ -25,11 +35,22 @@ export const usePrecedentSearch = () => {
   const cacheRef = useRef<Map<string, CachedResult>>(new Map());
 
   const load = useCallback(async () => {
-    const key = JSON.stringify({ query, category, aiSimilarity, page });
+    const key = JSON.stringify({
+      query,
+      caseNumber,
+      caseName,
+      referencedArticles,
+      categories: sortedKey(categories),
+      courtTypes: sortedKey(courtTypes),
+      courtName,
+      decidedDateFrom,
+      decidedDateTo,
+      aiSimilarity,
+      page,
+    });
     const cached = cacheRef.current.get(key);
 
     if (cached) {
-      // 캐시가 있으면 로딩 표시 없이 즉시 반영
       setItems(cached.items);
       setTotalPages(cached.totalPages);
       setTotalElements(cached.totalElements);
@@ -42,7 +63,14 @@ export const usePrecedentSearch = () => {
     try {
       const params: PrecedentSearchParams = {
         query: query || undefined,
-        category: category === ALL_CATEGORY ? undefined : category,
+        caseNumber: caseNumber || undefined,
+        caseName: caseName || undefined,
+        referencedArticles: referencedArticles || undefined,
+        category: categories.length > 0 ? categories : undefined,
+        courtType: courtTypes.length > 0 ? courtTypes : undefined,
+        courtName,
+        decidedDateFrom: decidedDateFrom || undefined,
+        decidedDateTo: decidedDateTo || undefined,
         aiSimilarity,
         page,
         size: PAGE_SIZE,
@@ -62,31 +90,86 @@ export const usePrecedentSearch = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [query, category, aiSimilarity, page]);
+  }, [query, caseNumber, caseName, referencedArticles, categories, courtTypes, courtName, decidedDateFrom, decidedDateTo, aiSimilarity, page]);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, category, aiSimilarity, page]);
+  }, [query, caseNumber, caseName, referencedArticles, categories, courtTypes, courtName, decidedDateFrom, decidedDateTo, aiSimilarity, page]);
 
-  // 검색어는 입력 중이 아니라 SearchBar에서 제출(엔터/버튼)했을 때만 반영
   const search = useCallback((keyword: string) => {
     cacheRef.current.clear();
     setQuery(keyword);
     setPage(0);
   }, []);
 
-  const selectCategory = useCallback((next: CaseCategory) => {
+  const searchCaseNumber = useCallback((value: string) => {
     cacheRef.current.clear();
-    setCategory(next);
+    setCaseNumberState(value.trim());
+    setPage(0);
+  }, []);
+
+  const searchCaseName = useCallback((value: string) => {
+    cacheRef.current.clear();
+    setCaseNameState(value.trim());
+    setPage(0);
+  }, []);
+
+  const searchReferencedArticles = useCallback((value: string) => {
+    cacheRef.current.clear();
+    setReferencedArticlesState(value.trim());
+    setPage(0);
+  }, []);
+
+  const selectCategories = useCallback((next: CaseCategory[]) => {
+    cacheRef.current.clear();
+    setCategoriesState(next);
+    setPage(0);
+  }, []);
+
+  const selectCourtTypes = useCallback((next: CourtType[]) => {
+    cacheRef.current.clear();
+    setCourtTypesState(next);
+    setPage(0);
+  }, []);
+
+  const selectCourtName = useCallback((next: string | undefined) => {
+    cacheRef.current.clear();
+    setCourtNameState(next);
+    setPage(0);
+  }, []);
+
+  const selectDecidedDateFrom = useCallback((next: string) => {
+    cacheRef.current.clear();
+    setDecidedDateFromState(next);
+    setPage(0);
+  }, []);
+
+  const selectDecidedDateTo = useCallback((next: string) => {
+    cacheRef.current.clear();
+    setDecidedDateToState(next);
     setPage(0);
   }, []);
 
   return {
     query,
     search,
-    category,
-    selectCategory,
+    caseNumber,
+    searchCaseNumber,
+    caseName,
+    searchCaseName,
+    referencedArticles,
+    searchReferencedArticles,
+    categories,
+    selectCategories,
+    courtTypes,
+    selectCourtTypes,
+    courtName,
+    selectCourtName,
+    decidedDateFrom,
+    selectDecidedDateFrom,
+    decidedDateTo,
+    selectDecidedDateTo,
     aiSimilarity,
     setAiSimilarity,
     page,
