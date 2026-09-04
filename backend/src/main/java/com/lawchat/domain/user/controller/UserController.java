@@ -1,13 +1,16 @@
 package com.lawchat.domain.user.controller;
 
+import com.lawchat.domain.user.dto.request.UpdateProfileRequest;
 import com.lawchat.domain.user.dto.response.UserProfileResponse;
 import com.lawchat.domain.user.service.UserService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -46,14 +49,47 @@ public class UserController {
      * PATCH /api/users/me
      *
      * PUT 이 아니라 PATCH 인 이유: 전달된 필드만 부분 수정하기 때문.
+     *
+     * ★ phone 필드가 추가됐지만 프론트 수정은 필요 없다.
+     *   기존 프론트가 { nickname, profileImg } 만 보내면 phone 은 JSON 에 없는 필드라
+     *   자동으로 null 이 되고, null 이면 서비스가 전화번호를 건드리지 않는다.
+     *   전화번호 수정 UI 가 생기면 그때 body 에 phone 만 추가로 실어 보내면 된다.
      */
     @PatchMapping("/me")
     public ResponseEntity<UserProfileResponse> updateProfile(
             @AuthenticationPrincipal Long userId,
-            @RequestBody UpdateProfileRequest request) {
+            @Valid @RequestBody UpdateProfileRequest request) {
 
         return ResponseEntity.ok(
-                userService.updateProfile(userId, request.nickname(), request.profileImg()));
+                userService.updateProfile(userId, request.nickname(), request.profileImg(), request.phone()));
+    }
+
+    /**
+     * 프로필 이미지 변경
+     * POST /api/users/me/profile-image
+     *
+     * Content-Type: multipart/form-data
+     * 파트 이름: file
+     *
+     * ★ PATCH /me 와 나눈 이유
+     *   PATCH /me 는 JSON 을 받는다. 이미지 파일은 JSON 에 담을 수 없어
+     *   multipart 로 받아야 하므로 엔드포인트를 분리했다.
+     *   대신 "업로드 후 다시 PATCH 호출" 같은 2단계를 요구하지 않고,
+     *   이 요청 하나로 저장 + 반영까지 끝낸다.
+     *
+     * ★ 응답이 PATCH /me 와 동일한 UserProfileResponse 인 이유
+     *   프론트가 업로드 후 프로필을 다시 조회할 필요 없이
+     *   이 응답만으로 화면(프로필 사진, 닉네임 등)을 갱신할 수 있게 하기 위함이다.
+     *   응답의 profileImg 는 브라우저가 바로 <img src> 에 넣을 수 있는 절대 URL 이다.
+     *
+     * 제약: PNG/JPG/GIF/WEBP, 최대 5MB
+     */
+    @PostMapping("/me/profile-image")
+    public ResponseEntity<UserProfileResponse> updateProfileImage(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam("file") MultipartFile file) {
+
+        return ResponseEntity.ok(userService.updateProfileImage(userId, file));
     }
 
     /**
@@ -101,10 +137,6 @@ public class UserController {
             @RequestParam @NotBlank String nickname) {
         return ResponseEntity.ok(Map.of("available", userService.isNicknameAvailable(nickname)));
     }
-
-    // 요청 바디가 이 컨트롤러에서만 쓰이므로 내부 record 로 간단히 정의했다.
-    // 재사용이 생기면 dto/request 패키지로 빼면 된다.
-    public record UpdateProfileRequest(String nickname, String profileImg) {}
 
     public record ChangePasswordRequest(String currentPassword, String newPassword) {}
 }
