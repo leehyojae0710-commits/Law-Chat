@@ -22,6 +22,22 @@ export const getMe = async (): Promise<AuthUser_Profile> => {
   return res.data;
 };
 
+export const updateProfile = async(data : {nickName?:string , phone?:string}): Promise<AuthUser_Profile> => {
+  const res = await apiClient.patch<AuthUser_Profile>("/users/me", data);
+  return res.data;
+}
+
+export const updateProfileImg = async (file: File): Promise<AuthUser_Profile> => {
+  const formData = new FormData();
+  formData.append("profileImg", file);
+  const res = await apiClient.patch<AuthUser_Profile>("/users/me/profileImg", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return res.data;
+}
+
 export const logoutApi = async (): Promise<void> => {
   await apiClient.post("/auth/logout");
 };
