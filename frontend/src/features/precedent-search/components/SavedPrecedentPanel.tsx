@@ -29,13 +29,13 @@ export const SavedPrecedentPanel = ({
             <p className="text-xs text-gray-400">아직 저장한 판례가 없어요</p>
           )}
           {!isLoading && !error && bookmarks.length > 0 && (
-            <ul className="mt-3 space-y-3">
+            <ul className="mt-3 space-y-3 min-w-0">
               {bookmarks.map((b) => (
                 <li key={b.bookmarkId} className="text-sm">
                   <p className="text-xs text-gray-400">
                     {b.court} · {b.caseNumber}
                   </p>
-                  <p className="font-medium">{b.title}</p>
+                  <p className="font-medium break-words">{b.title}</p>
                 </li>
               ))}
             </ul>

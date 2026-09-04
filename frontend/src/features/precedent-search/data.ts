@@ -1,7 +1,5 @@
 import type { Precedent } from "./types";
 
-export const precedentCategories = ["전체", "민법", "형법", "상법", "노동법", "부동산"];
-
 export const precedents: Precedent[] = [
   {
     id: "p1",
