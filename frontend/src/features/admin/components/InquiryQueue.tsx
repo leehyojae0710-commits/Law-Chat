@@ -82,8 +82,8 @@ export const InquiryQueue = () => {
       ) : inquiries.length === 0 ? (
         <p className="text-sm text-gray-400 border rounded-xl p-10 text-center">조건에 맞는 문의가 없습니다.</p>
       ) : (
-        <div className="grid grid-cols-[1fr_1fr] gap-4">
-          <div className="border rounded-xl divide-y">
+        <div className="grid grid-cols-[1fr_1fr] gap-4 h-[600px]">
+          <div className="border rounded-xl divide-y overflow-y-auto h-full">
             {inquiries.map((inq) => (
               <button
                 key={inq.inquiryId}
@@ -108,7 +108,7 @@ export const InquiryQueue = () => {
             ))}
           </div>
 
-          <div className="border rounded-xl p-4">
+          <div className="border rounded-xl p-4 overflow-y-auto h-full">
             {!selected ? (
               <p className="text-sm text-gray-400">문의를 선택해주세요.</p>
             ) : (
