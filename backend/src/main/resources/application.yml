@@ -54,6 +54,14 @@ file:
   upload-dir: \\192.168.0.229\uploads\2차\images
 
 # ==========================================
+# SOLAPI (SMS 발송) Settings
+# ==========================================
+solapi:
+  api-key: ${SOLAPI_API_KEY}
+  api-secret: ${SOLAPI_API_SECRET}
+  sender-number: ${SOLAPI_SENDER_NUMBER}
+
+# ==========================================
 # JWT Token Settings
 # ==========================================
 jwt:

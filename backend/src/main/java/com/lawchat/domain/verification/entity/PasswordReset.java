@@ -12,10 +12,9 @@ import java.time.LocalDateTime;
 /**
  * 비밀번호 재설정 인증 요청 1건 — 실제 DB의 password_reset 테이블과 1:1 매핑.
  *
- * ★ 지금은 이메일 전용이다.
- *   auth_target 컬럼은 나중에 전화번호도 담을 수 있게 범용으로 설계했지만,
- *   User 테이블에 phone 컬럼이 아직 없어서 당장은 항상 "이메일 주소"만 들어간다.
- *   나중에 phone 이 추가되면 이 엔티티/테이블은 그대로 두고 서비스 로직만 확장하면 된다.
+ * ★ EMAIL/PHONE(SMS) 둘 다 지원한다.
+ *   auth_target 컬럼은 이메일/전화번호 둘 다 담을 수 있게 범용으로 설계돼 있고,
+ *   PasswordResetService 가 ContactType 에 따라 이메일 또는 정규화된 전화번호를 넣는다.
  *
  * [단일 팩터 + 단일 단계 설계]
  *  코드 확인과 비밀번호 변경이 한 번의 API 호출(POST /password/reset)로 끝난다.
