@@ -1,18 +1,12 @@
 import { apiClient } from "./client";
 import type {
   Precedent,
+  PrecedentAiSummary,
   PrecedentBookmark,
   PrecedentDetail,
   PrecedentListResponse,
   PrecedentSearchParams,
 } from "../features/precedent-search/types";
-
-// PrecedentController 매칭:
-//  - SearchBar, CategoryFilter, AiSimilaritySwitch -> GET /precedents
-//  - PrecedentResultCard 클릭(상세)                -> GET /precedents/{precedentId}
-//  - SavedPrecedentPanel                           -> GET /precedents/bookmarks,
-//                                                       POST/DELETE /precedents/{precedentId}/bookmark
-// 목록/상세는 비로그인도 열람 가능. 북마크 3종은 로그인 필요(401 시 apiClient 인터셉터가 토큰을 붙이지 못하면 그대로 실패).
 
 export const searchPrecedents = async (
   params: PrecedentSearchParams
@@ -21,10 +15,23 @@ export const searchPrecedents = async (
   return res.data;
 };
 
+// 법원명 드롭다운(CourtNameSelect)용 - DB에 실제 존재하는 법원명 전체 목록.
+export const getCourtNames = async (): Promise<string[]> => {
+  const res = await apiClient.get<string[]>("/precedents/court-names");
+  return res.data;
+};
+
 export const getPrecedentDetail = async (
   precedentId: Precedent["id"]
 ): Promise<PrecedentDetail> => {
   const res = await apiClient.get<PrecedentDetail>(`/precedents/${precedentId}`);
+  return res.data;
+};
+
+export const getPrecedentAiSummary = async (
+  precedentId: Precedent["id"]
+): Promise<PrecedentAiSummary> => {
+  const res = await apiClient.get<PrecedentAiSummary>(`/precedents/${precedentId}/ai-summary`);
   return res.data;
 };
 

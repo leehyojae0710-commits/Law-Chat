@@ -1,11 +1,33 @@
 import { apiClient } from "./client";
+import type { InquiryCategory, InquiryStatus } from "../features/support/types";
+import type { Notice, NoticeCategory, NoticeListItem, NoticePopup, NoticePopupAdmin, PageResponse } from "../features/notice/types";
 
 // ===== 대시보드 =====
+// 좋아요는 집계하지 않음. "신고(싫어요) 건수 + 비율 + 사유 카테고리별 분포 + 최근 피드백"이 응답으로 온다.
+// (features/chat/types.ts의 FeedbackReasonCode와 code 값이 1:1로 대응됨)
+export interface DashboardReasonStat {
+  code: string;
+  label: string;
+  count: number;
+  percent: number; // 0~100, 소수 첫째자리
+}
+
+export interface DashboardRecentFeedbackItem {
+  feedbackId: number;
+  title: string; // 질문 원문을 짧게 자른 것 (실제 제목 컬럼은 없음)
+  reasonCode: string;
+  reasonLabel: string;
+  reasonDetail: string; // 상세설명이 없으면 reasonLabel과 동일한 값이 옴
+  createdAt: string;
+}
+
 export interface DashboardStats {
-  totalDislikes: number;
-  weeklyDislikes: number;
-  totalLikes: number;
-  dislikeRate: number;
+  totalFeedbackCount: number;
+  weeklyFeedbackCount: number;
+  dislikeRatioPercent: number; // 0~100, 소수 첫째자리
+  reasonBreakdown: DashboardReasonStat[];
+  recentFeedback: DashboardRecentFeedbackItem[];
+  updatedAt: string; // 이 응답이 만들어진 시각 (ISO)
 }
 
 export const getDashboardStats = async (): Promise<DashboardStats> => {
@@ -14,27 +36,48 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 };
 
 // ===== 1:1 문의 처리 =====
-export interface Inquiry {
-  id: string;
+// 관리자 목록/상세 응답 - 사용자용과 달리 content, answerContent(미승인 포함), 작성자 정보까지 항상 포함됨
+export interface AdminInquiryItem {
+  inquiryId: number;
+  category: InquiryCategory;
+  categoryLabel: string;
   title: string;
   content: string;
-  authorEmail: string;
-  status: "미답변" | "답변완료";
+  screenshotUrl: string | null; // 절대 URL, 첨부 없으면 null
+  // 탈퇴 회원이면 셋 다 null, 익명화된 회원이면 authorEmail만 null
+  authorId: number | null;
+  authorEmail: string | null;
+  authorNickname: string | null;
+  status: InquiryStatus;
+  statusLabel: string;
+  answerContent: string | null;
+  answeredAt: string | null;
   createdAt: string;
 }
 
-export const getInquiries = async (): Promise<Inquiry[]> => {
-  const res = await apiClient.get<Inquiry[]>("/admin/inquiries");
+export const getAdminInquiries = async (
+  status?: InquiryStatus,
+  category?: InquiryCategory,
+  page = 0,
+  size = 20
+): Promise<PageResponse<AdminInquiryItem>> => {
+  const res = await apiClient.get<PageResponse<AdminInquiryItem>>("/admin/inquiries", {
+    params: { status, category, page, size },
+  });
   return res.data;
 };
 
-export const answerInquiry = async (inquiryId: string, answer: string): Promise<void> => {
-  await apiClient.post(`/admin/inquiries/${inquiryId}/answer`, { answer });
+export const getAdminInquiry = async (inquiryId: number): Promise<AdminInquiryItem> => {
+  const res = await apiClient.get<AdminInquiryItem>(`/admin/inquiries/${inquiryId}`);
+  return res.data;
+};
+
+// 같은 엔드포인트로 등록/수정 둘 다 처리됨 (이미 답변이 있으면 덮어쓰고 answeredAt 갱신)
+export const answerInquiry = async (inquiryId: number, answerContent: string): Promise<void> => {
+  await apiClient.post(`/admin/inquiries/${inquiryId}/answer`, { answerContent });
 };
 
 // ===== 공지사항 관리 =====
-import type { Notice, NoticeCategory, NoticeListItem, NoticePopup, NoticePopupAdmin, PageResponse } from "../features/notice/types";
-
 
 export const getAdminNotices = async (page = 0, size = 10): Promise<PageResponse<NoticeListItem>> => {
   const res = await apiClient.get<PageResponse<NoticeListItem>>("/admin/notices", { params: { page, size } });

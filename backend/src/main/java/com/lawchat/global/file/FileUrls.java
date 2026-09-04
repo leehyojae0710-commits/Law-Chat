@@ -2,7 +2,6 @@ package com.lawchat.global.file;
 
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -25,7 +24,7 @@ public final class FileUrls {
     private FileUrls() {
     }
 
-    /** 이미지 등 브라우저에서 바로 렌더링할 파일 (팝업 이미지용) */
+    /** 이미지 등 브라우저에서 바로 렌더링할 파일 (팝업 이미지, 문의 스크린샷용) */
     public static String view(String filename) {
         return build(VIEW_PREFIX, filename);
     }
@@ -35,14 +34,32 @@ public final class FileUrls {
         return build(DOWNLOAD_PREFIX, filename);
     }
 
+    /**
+     * ★ 이중 인코딩 주의
+     *
+     * 예전 코드는 URLEncoder.encode() 로 직접 인코딩한 문자열을 path() 에 넣었다.
+     * 그런데 UriComponentsBuilder.toUriString() 은 내부적으로 build().encode().toUriString()
+     * 을 수행하므로, 이미 인코딩된 값이 한 번 더 인코딩되어 % 가 %25 로 바뀌었다.
+     *
+     *   무당벌레.jpg
+     *     -> %EB%AC%B4...      (URLEncoder)
+     *     -> %25EB%25AC%25B4.. (toUriString 이 % 를 %25 로 재인코딩)
+     *
+     * 이 URL 로 요청하면 서버는 파일명을 "%EB%AC%B4..." 라는 리터럴 문자열로 받아
+     * 공유폴더에서 찾지 못하고 404(FILE_NOT_FOUND) 를 낸다.
+     *
+     * 해결: 직접 인코딩하지 않고 URI 템플릿 변수로 넘긴 뒤 encode() 를 한 번만 호출한다.
+     * buildAndExpand() 를 쓰면 파일명에 {, } 같은 문자가 있어도 템플릿으로 오해하지 않는다.
+     */
     private static String build(String prefix, String filename) {
         if (filename == null || filename.isBlank()) {
             return null;
         }
-        String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
         return ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path(prefix)
-                .path(encoded)
+                .path("{filename}")
+                .buildAndExpand(filename)
+                .encode(StandardCharsets.UTF_8)
                 .toUriString();
     }
 }

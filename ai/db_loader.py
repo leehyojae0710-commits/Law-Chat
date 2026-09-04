@@ -15,12 +15,6 @@ db_loader.py
     1) lawSearch.do  : 키워드로 검색해서 목록(일련번호 등)을 받고
     2) lawService.do : 그 일련번호(ID)로 본문 전체를 받는다
 2단계 흐름은 4개 카테고리 모두 동일하다.
-
-주의: 법제처 사이트의 상세 가이드 페이지는 크롤링이 차단되어 있어
-응답 XML의 세부 태그명은 공개된 개발자 문서/예제 기준으로 작성했다.
-실제 응답과 태그명이 다를 수 있으니, 처음 실행할 땐 반드시
-`debug_raw_response()`로 원본 XML을 한 번 찍어보고 태그명을 맞춰볼 것
-(아래 CLI에 --debug 옵션으로 바로 확인 가능).
 """
 
 from __future__ import annotations
@@ -49,7 +43,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-LegalType = Literal["civil", "criminal", "administrative"]
+LegalType = Literal["civil", "criminal", "administrative", "ip"]
 DocuType = Literal["법령", "판례", "해석례", "결정례"]
 
 LAW_API_BASE = "http://www.law.go.kr/DRF"
@@ -82,10 +76,8 @@ def _get_oc() -> str:
 
 
 def _http_get_with_retry(url: str, params: dict, timeout: int = 15,
-                          max_retries: int = 4, backoff_base: float = 2.0) -> requests.Response:
-    """일시적 네트워크 장애(DNS 실패, 타임아웃, 커넥션 오류 등)에 대비한 재시도 래퍼.
-    지수 백오프(2초, 4초, 8초, 16초)로 최대 max_retries회 재시도한다.
-    """
+                         max_retries: int = 4, backoff_base: float = 2.0) -> requests.Response:
+    """일시적 네트워크 장애(DNS 실패, 타임아웃, 커넥션 오류 등)에 대비한 재시도 래퍼."""
     last_exc: Exception | None = None
     for attempt in range(1, max_retries + 1):
         try:
@@ -120,26 +112,20 @@ def _api_service(target: str, doc_id: str, **extra_params) -> etree._Element:
 
 
 def _xtext(node, *candidate_tags: str) -> str:
-    """후보 태그 이름들을 순서대로 시도해서 첫 매치 텍스트를 반환.
-    (실제 응답 태그명이 문서마다 조금씩 다를 수 있어 방어적으로 여러 후보를 둔다)
-    판례 등 일부 응답은 type=XML이어도 CDATA 안에 <br/> 같은 HTML 태그가
-    문자 그대로 섞여 있어, 검색 품질을 위해 여기서 한 번에 정리한다.
-    """
+    """후보 태그 이름들을 순서대로 시도해서 첫 매치 텍스트를 반환."""
     for tag in candidate_tags:
         found = node.find(f".//{tag}")
         if found is not None and found.text:
             text = found.text
             text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
-            text = re.sub(r"<[^>]+>", "", text)  # 혹시 남는 다른 HTML 태그도 제거
+            text = re.sub(r"<[^>]+>", "", text)
             text = re.sub(r"\n{3,}", "\n\n", text)
             return text.strip()
     return ""
 
 
 def debug_raw_response(target: str, query: str) -> None:
-    """실제 API 응답 XML을 그대로 출력. 태그명이 예상과 다를 때 이 함수로 확인 후
-    아래 파서(_xtext 후보 리스트)를 실제 태그명에 맞춰 수정하면 된다.
-    """
+    """실제 API 응답 XML을 그대로 출력."""
     root = _api_search(target, query, display=1)
     print(etree.tostring(root, pretty_print=True).decode("utf-8"))
 
@@ -191,9 +177,14 @@ def search_statute(query: str, display: int = 20) -> list[dict]:
 
 
 def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None = None) -> list[LegalDocument]:
-    """법령 본문을 조/항 단위로 청킹."""
+    """법령 본문을 조/항/호/목 단위로 청킹."""
     root = _api_service("law", law_id, **({"MST": mst} if mst else {}))
     law_name = _xtext(root, "법령명_한글", "법령명한글")
+
+    # ⚠️ law.go.kr 상세페이지(lsInfoP.do)의 lsiSeq 파라미터는 "법령ID"가 아니라
+    # "법령일련번호(MST)"를 요구한다. law_id를 그대로 넣으면 전혀 다른 법령이 열릴 수 있으므로
+    # source_id는 반드시 mst를 사용한다 (mst가 없으면 URL을 만들 수 없으니 빈 값으로 둔다).
+    url_source_id = mst or ""
 
     docs: list[LegalDocument] = []
     for jo in root.findall(".//조문단위"):
@@ -203,11 +194,20 @@ def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None =
         jo_content = _xtext(jo, "조문내용")
         article_label = f"제{jo_no}조" + (f"의{jo_gaji}" if jo_gaji and jo_gaji != "0" else "")
 
+        # joNo/joBrNo 딥링크 파라미터 (law.go.kr은 조번호 4자리, 조가지번호 2자리로 0-padding)
+        jo_link_extra = {}
+        if jo_no:
+            jo_link_extra = {
+                "jo_no": jo_no.zfill(4),
+                "jo_br_no": (jo_gaji or "0").zfill(2),
+            }
+
         if jo_content.strip():
             docs.append(LegalDocument(
                 content=f"{article_label}({jo_title}) {jo_content}".strip(),
                 law_name=law_name, article_no=article_label,
-                docu_type="법령", legal_type=legal_type, source_id=law_id,
+                docu_type="법령", legal_type=legal_type, source_id=url_source_id,
+                extra=dict(jo_link_extra),
             ))
         for hang in jo.findall(".//항"):
             hang_no = _xtext(hang, "항번호")
@@ -218,12 +218,10 @@ def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None =
                 docs.append(LegalDocument(
                     content=f"{hang_label} {hang_content}".strip(),
                     law_name=law_name, article_no=article_label,
-                    docu_type="법령", legal_type=legal_type, source_id=law_id,
-                    extra={"chunk_level": "항"},
+                    docu_type="법령", legal_type=legal_type, source_id=url_source_id,
+                    extra={"chunk_level": "항", **jo_link_extra},
                 ))
 
-            # 항내용 없이 곧바로 호가 오는 구조(정의 조항, 벌칙 조항 등)가 많아
-            # 호/목 단위까지 별도로 청킹해야 내용 누락이 없다.
             for ho in hang.findall("./호"):
                 ho_no = _xtext(ho, "호번호")
                 ho_content = _xtext(ho, "호내용")
@@ -233,8 +231,8 @@ def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None =
                     docs.append(LegalDocument(
                         content=f"{ho_label} {ho_content}".strip(),
                         law_name=law_name, article_no=article_label,
-                        docu_type="법령", legal_type=legal_type, source_id=law_id,
-                        extra={"chunk_level": "호"},
+                        docu_type="법령", legal_type=legal_type, source_id=url_source_id,
+                        extra={"chunk_level": "호", **jo_link_extra},
                     ))
 
                 for mok in ho.findall("./목"):
@@ -244,10 +242,10 @@ def fetch_statute_from_api(law_id: str, legal_type: LegalType, mst: str | None =
                         docs.append(LegalDocument(
                             content=f"{ho_label}{mok_no} {mok_content}".strip(),
                             law_name=law_name, article_no=article_label,
-                            docu_type="법령", legal_type=legal_type, source_id=law_id,
-                            extra={"chunk_level": "목"},
+                            docu_type="법령", legal_type=legal_type, source_id=url_source_id,
+                            extra={"chunk_level": "목", **jo_link_extra},
                         ))
-    logger.info(f"[법령] {law_name} ({law_id}) → {len(docs)}개 청크")
+    logger.info(f"[법령] {law_name} (법령ID={law_id}, MST={mst}) → {len(docs)}개 청크")
     return docs
 
 
@@ -390,22 +388,24 @@ def _split_long_text(text: str, max_chars: int = 500, overlap: int = 50) -> list
 # 7. legal_type별 수집 - 검색 키워드 목록을 받아 4개 카테고리 전부 수집
 # ──────────────────────────────────────────────────────────────
 
-# legal_type별 기본 검색 키워드 (필요에 따라 계속 추가/수정해서 커버리지를 넓히면 됨).
-# 이 키워드들로 4개 target(law/prec/expc/detc)을 모두 검색해서 관련 문서를 수집한다.
 DEFAULT_KEYWORDS: dict[LegalType, list[str]] = {
     "civil": ["민법", "임대차", "손해배상", "채권", "상속", "이혼"],
-    # "도로교통법"을 빼고, 실제 형사죄명 위주 키워드로 교체함.
-    # 이유: 법제처 검색 API는 제목이 아니라 본문 전문검색이라 "형법"으로 검색하면
-    # "형법 제~조를 준용한다" 같은 문구만 있는 무관한 법(예: 군사기밀보호법)까지 잡혀 들어옴.
-    # "도로교통법"을 통째로 키워드에 넣으면 그 법 전체가 criminal 인덱스에 섞여버려서
-    # 살인/절도 같은 무관한 질문에도 도로교통법 조문이 근거로 튀어나오는 원인이 됨.
     "criminal": ["형법", "형사소송법", "폭행", "절도", "사기", "살인", "강도", "성폭력"],
     "administrative": ["행정절차법", "행정심판법", "행정소송법", "영업정지", "국가공무원법"],
+    # 지식재산(IP) 분야 핵심 키워드
+    "ip": [
+        "특허법",
+        "상표법",
+        "저작권법",
+        "디자인보호법",
+        "부정경쟁방지 및 영업비밀보호에 관한 법률",
+        "실용신안법",
+        "영업비밀",
+        "저작권 침해",
+        "특허침해"
+    ],
 }
 
-# criminal 인덱스에 절대 섞이면 안 되는 무관 법령(2차 방어선).
-# collect_legal_type_documents가 API에서 받아온 결과 중 이 리스트에 포함된 law_name은
-# 키워드가 뭐였든 상관없이 걸러낸다.
 CRIMINAL_EXCLUDE_LAW_NAMES = {"도로교통법", "군사기밀 보호법", "군사기밀보호법"}
 
 
@@ -477,7 +477,6 @@ def collect_legal_type_documents(
                 logger.error(f"[결정례] {hit['헌재결정례일련번호']} 수집 실패, 건너뜀: {e}")
             time.sleep(sleep_sec)
 
-    # 2차 방어선: criminal인데 법제처 전문검색이 실수로 물어온 무관 법령을 최종 제거.
     if legal_type == "criminal":
         before = len(all_docs)
         all_docs = [d for d in all_docs if d.law_name not in CRIMINAL_EXCLUDE_LAW_NAMES]
@@ -493,12 +492,6 @@ def collect_legal_type_documents(
 # 8. 인덱스 빌드 & 저장/로딩
 # ──────────────────────────────────────────────────────────────
 
-# 임베딩 모델 싱글턴 캐시. legal_type(civil/criminal/administrative)마다 매번 새로
-# HuggingFaceEmbeddings를 생성하면 같은 bge-m3가 GPU에 여러 벌 올라가서
-# VRAM을 심각하게 낭비한다 (LLM 2개(ko_llama3, llama31)만으로도 이미 VRAM이
-# 빠듯한 구성이므로 임베딩 모델까지 GPU에 중복으로 올리면 OOM으로 직결됨).
-# -> 프로세스 전체에서 1개 인스턴스만 만들어서 재사용하고, 기본 device도
-#    "cuda"가 아니라 "cpu"로 바꿔서 GPU는 두 LLM 전용으로 비워둔다.
 _EMBEDDINGS_CACHE: dict[str, "HuggingFaceEmbeddings"] = {}
 
 
@@ -581,7 +574,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="법률 RAG 인덱스 빌더 (국가법령정보센터 Open API 전용)")
-    parser.add_argument("--legal-type", choices=["civil", "criminal", "administrative"])
+    parser.add_argument("--legal-type", choices=["civil", "criminal", "administrative", "ip"])
     parser.add_argument("--keywords", nargs="*", help="검색 키워드 목록 (생략하면 기본 키워드 사용)")
     parser.add_argument("--max-per-keyword", type=int, default=5, help="키워드당 카테고리별 최대 수집 건수")
     parser.add_argument("--debug", metavar="QUERY", help="본문 파싱 없이 원본 XML만 출력하고 종료")

@@ -1,6 +1,7 @@
 export interface LegalSource {
   lawName: string;
   articleNumber: string;
+  caseNum?: string;
   url: string;
 }
 

@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -25,7 +26,20 @@ import java.time.LocalDateTime;
  * DB 컬럼 decided_date는 별도 ALTER TABLE로 추가되어 있어야 한다 (nullable).
  */
 @Entity
-@Table(name = "precedents")
+@Table(
+        name = "precedents",
+        indexes = {
+                // 기본 정렬(PrecedentSearchService: Sort.by(DESC, "syncedAt"))용.
+                // 이 인덱스가 없으면 페이지 이동(검색어 없이 넘기기)만 해도 매번 풀스캔+filesort가 걸린다.
+                @Index(name = "idx_precedents_synced_at", columnList = "synced_at"),
+                // CategoryFilter(caseTypeName) + 기본 정렬 조합이 잦아서 복합 인덱스로 커버.
+                @Index(name = "idx_precedents_case_type_synced", columnList = "case_type_name, synced_at"),
+                // courtType(대법원/고등법원/하급심) 분류와 courtName 정확일치 필터용.
+                @Index(name = "idx_precedents_court_name", columnList = "court_name"),
+                // decidedDateFrom/To 범위 검색용.
+                @Index(name = "idx_precedents_decided_date", columnList = "decided_date")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Precedent {

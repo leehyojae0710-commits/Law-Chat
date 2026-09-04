@@ -12,6 +12,9 @@ public record PrecedentSearchRequest(
         String category,
         Boolean aiSimilarity,
         Integer page,
-        Integer size
+        Integer size,
+        String caseNumber,
+        String caseName,
+        String referencedArticles
 ) {
 }

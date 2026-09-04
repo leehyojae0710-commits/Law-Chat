@@ -18,6 +18,7 @@ export const signup = async (payload: SignupPayload): Promise<AuthResponse> => {
 
 export const getMe = async (): Promise<AuthUser> => {
   const res = await apiClient.get<AuthUser>("/auth/me");
+  console.log("getMe response:", res.data);
   return res.data;
 };
 

@@ -1,5 +1,6 @@
 package com.lawchat.domain.precedent.controller;
 
+import com.lawchat.domain.precedent.dto.response.PrecedentAiSummaryResponse;
 import com.lawchat.domain.precedent.dto.response.PrecedentBookmarkResponse;
 import com.lawchat.domain.precedent.dto.response.PrecedentDetailResponse;
 import com.lawchat.domain.precedent.dto.response.PrecedentListResponse;
@@ -22,21 +23,20 @@ import java.util.List;
 
 /**
  * /api/precedents/*
- * 프론트 매칭:
- *  - SearchBar, CategoryFilter, AiSimilaritySwitch -> GET /precedents
- *  - PrecedentResultCard 클릭(상세)                -> GET /precedents/{precedentId}
- *  - SavedPrecedentPanel                           -> GET /precedents/bookmarks,
- *                                                       POST/DELETE /precedents/{precedentId}/bookmark
  *
- * 목록/상세(GET)는 SecurityConfig에서 비로그인 열람을 허용한다.
- * 북마크 관련 3개 엔드포인트는 로그인이 필요하므로 SecurityConfig에 별도 authenticated 규칙을 추가해두었다.
- *
- * 검색 필터 확장(2차):
+ * 검색 필터(2026-09, 다중선택 확장):
+ *  - category (복수)   : 사건종류 다중선택 - "전체" 또는 미지정 시 필터 없음.
+ *                         DB에 실제로 존재하는 값 그대로 사용한다: 민사/형사/일반행정/가사/세무/특허/선거,특별
+ *  - courtType (복수)  : "대법원"/"고등법원"/"하급심" 중 0개 이상 (court_name 패턴 기반 3단계 분류)
+ *  - courtName         : 법원명 정확일치 (드롭다운, /api/precedents/court-names 목록에서 하나 선택)
  *  - caseNumber        : 사건번호 정확일치
- *  - courtType         : "대법원" / "고등법원" / "하급심" 중 하나 (court_type_code가 대법원/그외 2종류뿐이라
- *                         court_name 문자열 패턴으로 3단계를 분류한다 - PrecedentRepository 참고)
- *  - courtName         : 법원명 정확일치 (드롭다운에서 특정 법원 하나를 선택하는 용도, courtType과 별개)
- *  - decidedDateFrom/To : 선고일자 범위 (yyyy-MM-dd), 둘 중 하나만 줘도 동작
+ *  - caseName          : 사건명 부분일치 (LIKE)
+ *  - referencedArticles : 참조조문 부분일치 (LIKE)
+ *  - decidedDateFrom/To : 선고일자 범위 (yyyy-MM-dd)
+ *
+ * 쿼리 파라미터 형식: 같은 이름을 반복해서 보낸다 (예: ?category=민사&category=형사).
+ * "category[]=..." 형식(대괄호)은 Spring이 List<String>으로 바인딩하지 못하므로 사용하지 않는다
+ * (프론트 axios paramsSerializer가 이 형식으로 나가도록 설정돼 있음 - api/client.ts 참고).
  */
 @RestController
 @RequestMapping("/api/precedents")
@@ -49,23 +49,30 @@ public class PrecedentController {
     @GetMapping
     public ResponseEntity<PrecedentListResponse> search(
             @RequestParam(required = false) String query,
-            @RequestParam(required = false) String category,
+            @RequestParam(required = false) List<String> category,
             @RequestParam(required = false) Boolean aiSimilarity,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String caseNumber,
-            @RequestParam(required = false) String courtType,
+            @RequestParam(required = false) String caseName,
+            @RequestParam(required = false) String referencedArticles,
+            @RequestParam(required = false) List<String> courtType,
             @RequestParam(required = false) String courtName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate decidedDateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate decidedDateTo
     ) {
         return ResponseEntity.ok(precedentSearchService.search(
                 query, category, aiSimilarity, page, size,
-                caseNumber, courtType, courtName, decidedDateFrom, decidedDateTo
+                caseNumber, caseName, referencedArticles, courtType, courtName, decidedDateFrom, decidedDateTo
         ));
     }
 
-    // 리터럴 경로("/bookmarks")가 "/{precedentId}"보다 우선 매칭되므로 순서와 무관하게 안전하다.
+    // 리터럴 경로가 "/{precedentId}"보다 우선 매칭되므로 순서와 무관하게 안전하다.
+    @GetMapping("/court-names")
+    public ResponseEntity<List<String>> getCourtNames() {
+        return ResponseEntity.ok(precedentSearchService.getCourtNames());
+    }
+
     @GetMapping("/bookmarks")
     public ResponseEntity<List<PrecedentBookmarkResponse>> getBookmarks(@AuthenticationPrincipal Long userId) {
         return ResponseEntity.ok(precedentService.getBookmarks(userId));
@@ -75,6 +82,11 @@ public class PrecedentController {
     public ResponseEntity<PrecedentDetailResponse> getDetail(@AuthenticationPrincipal Long userId,
                                                                @PathVariable Long precedentId) {
         return ResponseEntity.ok(precedentService.getDetail(userId, precedentId));
+    }
+
+    @GetMapping("/{precedentId}/ai-summary")
+    public ResponseEntity<PrecedentAiSummaryResponse> getAiSummary(@PathVariable Long precedentId) {
+        return ResponseEntity.ok(precedentService.getAiSummary(precedentId));
     }
 
     @PostMapping("/{precedentId}/bookmark")

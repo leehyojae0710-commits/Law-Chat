@@ -18,6 +18,7 @@ import { AdminRoute } from "./AdminRoute";
 import { UserRoute } from "./UserRoute";
 import { KakaoCallbackPage } from "../pages/KakaoCallbackPage";
 import { NaverCallbackPage } from "../pages/NaverCallbackPage";
+import { ProfileTest } from "../pages/proflieTest";
 
 export const AppRoutes = () => {
   return (
@@ -36,6 +37,8 @@ export const AppRoutes = () => {
 
       <Route path="/login" element={<LoginPage />} />
       <Route path="/Signup" element={<SignupPage />} />
+
+      <Route path="/profile" element={<ProfileTest />} />
 
       <Route
         element={
