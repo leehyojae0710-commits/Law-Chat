@@ -5,7 +5,7 @@ import { ChatSidebar } from "../../features/chat/components/ChatSidebar";
 // 왼쪽 사이드바(ChatSidebar) + 오른쪽 콘텐츠(Outlet)로 구성됩니다.
 export const ChatLayout = () => {
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden bg-white dark:bg-slate-900">
       <ChatSidebar />
       <main className="flex-1 overflow-y-auto">
         <Outlet />

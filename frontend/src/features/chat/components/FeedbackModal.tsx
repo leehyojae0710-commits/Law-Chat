@@ -13,19 +13,19 @@ export const FeedbackModal = ({ onClose, onSubmit }: FeedbackModalProps) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-800">
         <div className="mb-1 flex items-start justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">무엇이 아쉬웠나요?</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">무엇이 아쉬웠나요?</h3>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             aria-label="닫기"
           >
             ✕
           </button>
         </div>
-        <p className="mb-4 text-sm text-slate-500">선택해 주신 내용은 답변 검수와 사전 개선에 사용됩니다.</p>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">선택해 주신 내용은 답변 검수와 사전 개선에 사용됩니다.</p>
 
         <div className="space-y-2">
           {feedbackReasons.map((reason) => (
@@ -33,8 +33,8 @@ export const FeedbackModal = ({ onClose, onSubmit }: FeedbackModalProps) => {
               key={reason.code}
               className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors ${
                 selected === reason.code
-                  ? "border-violet-500 bg-violet-50 text-violet-700"
-                  : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                  ? "border-violet-500 bg-violet-50 text-violet-700 dark:border-violet-600 dark:bg-violet-900/30 dark:text-violet-300"
+                  : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
               <input
@@ -50,13 +50,13 @@ export const FeedbackModal = ({ onClose, onSubmit }: FeedbackModalProps) => {
         </div>
 
         <div className="mt-4">
-          <label className="mb-1.5 block text-sm text-slate-600">자세히 알려주시면 큰 도움이 됩니다 (선택)</label>
+          <label className="mb-1.5 block text-sm text-slate-600 dark:text-slate-400">자세히 알려주시면 큰 도움이 됩니다 (선택)</label>
           <textarea
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
             rows={3}
             placeholder="어떤 부분이 아쉬웠는지 적어주세요"
-            className="w-full resize-none rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-violet-400"
+            className="w-full resize-none rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-violet-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
         </div>
 
@@ -64,7 +64,7 @@ export const FeedbackModal = ({ onClose, onSubmit }: FeedbackModalProps) => {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             취소
           </button>

@@ -16,7 +16,7 @@ export const ChatPage = () => {
   const hasMessages = messages.length > 0;
 
   if (isLoadingHistory) {
-    return <div className="flex h-full items-center justify-center text-sm text-slate-400">불러오는 중이에요…</div>;
+    return <div className="flex h-full items-center justify-center text-sm text-slate-400 dark:text-slate-500">불러오는 중이에요…</div>;
   }
 
   // 메시지가 없는 상태 = 새 상담 시작 화면 (히어로 입력창 + 예시 질문)
@@ -24,7 +24,7 @@ export const ChatPage = () => {
     return (
       <div className="mx-auto flex h-full max-w-3xl flex-col justify-center px-6">
         <NewChatInput onSend={sendMessage} isSending={isSending} variant="hero" />
-        {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+        {error && <p className="mt-3 text-sm text-red-500 dark:text-red-400">{error}</p>}
       </div>
     );
   }
@@ -41,14 +41,14 @@ export const ChatPage = () => {
           />
         ))}
         {isSending && (
-          <div className="flex items-center gap-2 pl-11 text-sm text-slate-400">
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300" style={{ animationDelay: "0ms" }} />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300" style={{ animationDelay: "120ms" }} />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300" style={{ animationDelay: "240ms" }} />
+          <div className="flex items-center gap-2 pl-11 text-sm text-slate-400 dark:text-slate-500">
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300 dark:bg-slate-600" style={{ animationDelay: "0ms" }} />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300 dark:bg-slate-600" style={{ animationDelay: "120ms" }} />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-300 dark:bg-slate-600" style={{ animationDelay: "240ms" }} />
             <span className="ml-1">답변을 작성하고 있어요…</span>
           </div>
         )}
-        {error && <p className="pl-11 text-sm text-red-500">{error}</p>}
+        {error && <p className="pl-11 text-sm text-red-500 dark:text-red-400">{error}</p>}
         <div ref={bottomRef} />
       </div>
 

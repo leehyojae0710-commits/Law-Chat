@@ -23,8 +23,8 @@ export const ChatHistoryList = () => {
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">
-          상담 히스토리 <span className="ml-1 text-sm font-normal text-slate-400">총 {conversations.length}건</span>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+          상담 히스토리 <span className="ml-1 text-sm font-normal text-slate-400 dark:text-slate-500">총 {conversations.length}건</span>
         </h1>
         <Link
           to="/chat"
@@ -41,38 +41,38 @@ export const ChatHistoryList = () => {
           setPage(1);
         }}
         placeholder="제목이나 내용으로 검색"
-        className="mb-6 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-violet-400"
+        className="mb-6 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
 
-      {isLoading && <p className="py-10 text-center text-sm text-slate-400">불러오는 중이에요…</p>}
+      {isLoading && <p className="py-10 text-center text-sm text-slate-400 dark:text-slate-500">불러오는 중이에요…</p>}
 
       {!isLoading && conversations.length === 0 && (
-        <p className="py-10 text-center text-sm text-slate-400">아직 상담 기록이 없어요.</p>
+        <p className="py-10 text-center text-sm text-slate-400 dark:text-slate-500">아직 상담 기록이 없어요.</p>
       )}
 
       <div className="space-y-3">
         {pageItems.map((c) => (
           <div
             key={c.id}
-            className="flex items-center justify-between rounded-xl border border-slate-200 px-5 py-4 hover:border-slate-300"
+            className="flex items-center justify-between rounded-xl border border-slate-200 px-5 py-4 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
           >
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="truncate font-semibold text-slate-900">{c.title}</p>
+                <p className="truncate font-semibold text-slate-900 dark:text-slate-100">{c.title}</p>
                 {c.hasSummary && (
-                  <span className="shrink-0 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-600">
+                  <span className="shrink-0 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
                     요약서
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 truncate text-sm text-slate-500">{c.preview}</p>
+              <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">{c.preview}</p>
             </div>
 
             <div className="flex shrink-0 items-center gap-3 pl-4">
-              <span className="text-xs text-slate-400">{formatYmd(c.updatedAt)}</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">{formatYmd(c.updatedAt)}</span>
               <Link
                 to={`/chat/${c.id}`}
-                className="rounded-lg bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-100"
+                className="rounded-lg bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 dark:hover:bg-violet-900/50"
               >
                 이어서 상담
               </Link>
@@ -81,19 +81,19 @@ export const ChatHistoryList = () => {
                 <button
                   type="button"
                   onClick={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}
-                  className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-500 hover:bg-slate-50"
+                  className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                 >
                   ···
                 </button>
                 {openMenuId === c.id && (
-                  <div className="absolute right-0 top-9 z-10 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="absolute right-0 top-9 z-10 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
                     <button
                       type="button"
                       onClick={() => {
                         toggleFavorite(c.id, !c.isFavorite);
                         setOpenMenuId(null);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-violet-600 hover:bg-slate-50"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-violet-600 hover:bg-slate-50 dark:hover:bg-slate-700"
                     >
                       ★ {c.isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
                     </button>
@@ -103,7 +103,7 @@ export const ChatHistoryList = () => {
                         removeConversation(c.id);
                         setOpenMenuId(null);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-500 hover:bg-slate-50"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-500 hover:bg-slate-50 dark:hover:bg-slate-700"
                     >
                       ✕ 채팅 삭제
                     </button>
@@ -123,7 +123,7 @@ export const ChatHistoryList = () => {
               type="button"
               onClick={() => setPage(p)}
               className={`h-8 w-8 rounded-full text-sm ${
-                p === page ? "bg-violet-600 text-white" : "text-slate-500 hover:bg-slate-100"
+                p === page ? "bg-violet-600 text-white" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
               }`}
             >
               {p}
