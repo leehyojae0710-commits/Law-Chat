@@ -58,9 +58,7 @@ file:
 # ==========================================
 jwt:
   secret: ${JWT_SECRET}
-  # 로그인 유지 시간: 10시간 (10 * 60 * 60 * 1000 = 36,000,000 ms)
-  # 활동해도 연장되지 않는다. 발급 후 10시간이 지나면 무조건 재로그인.
-  expiration-millis: ${JWT_EXPIRATION:36000000}
+  expiration-millis: ${JWT_EXPIRATION}
 
 # ==========================================
 # OAuth Social Login Settings
@@ -90,13 +88,14 @@ ai:
   legal-chatbot:
     base-url: http://3.89.248.99:8000
     connect-timeout-ms: 5000
-    read-timeout-ms: 60000
+    read-timeout-ms: 600000
 
 law-api:
   oc: "202608110004094829"
   base-url: http://www.law.go.kr/DRF
   sync:
     enabled-on-startup: false
+    startup-max-pages: 4000   # 필요하면 늘리세요
     cron: "0 0 3 * * *"
 
 user:

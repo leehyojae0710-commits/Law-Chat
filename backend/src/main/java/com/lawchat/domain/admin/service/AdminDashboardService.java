@@ -2,9 +2,12 @@ package com.lawchat.domain.admin.service;
 
 import com.lawchat.domain.admin.dto.response.AdminDashboardStatsResponse;
 import com.lawchat.domain.chat.entity.ChatFeedbackDataset;
+import com.lawchat.domain.chat.entity.ChatRole;
 import com.lawchat.domain.chat.repository.ChatFeedbackRepository;
+import com.lawchat.domain.chat.repository.ChatMessageRepository;
 import com.lawchat.global.auth.AdminValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +26,11 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class AdminDashboardService {
 
+    private static final int RECENT_FEEDBACK_LIMIT = 6;
+    private static final int TITLE_MAX_LENGTH = 24;
+
     private final ChatFeedbackRepository chatFeedbackRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final AdminValidator adminValidator;
 
     // FeedbackReasonCode (frontend/src/features/chat/types.ts)와 1:1로 맞춰둔 라벨.
@@ -63,11 +70,90 @@ public class AdminDashboardService {
             }
         }
 
+        long finalTotalFeedback = totalFeedback;
         List<AdminDashboardStatsResponse.ReasonStat> breakdown = REASON_LABELS.entrySet().stream()
-                .map(e -> new AdminDashboardStatsResponse.ReasonStat(e.getKey(), e.getValue(), counts.get(e.getKey())))
+                .map(e -> {
+                    long count = counts.get(e.getKey());
+                    double percent = finalTotalFeedback == 0 ? 0.0 : round1(count * 100.0 / finalTotalFeedback);
+                    return new AdminDashboardStatsResponse.ReasonStat(e.getKey(), e.getValue(), count, percent);
+                })
                 .toList();
 
-        return new AdminDashboardStatsResponse(totalFeedback, weeklyFeedback, breakdown);
+        long totalAiAnswers = chatMessageRepository.countByRole(ChatRole.AI);
+        double dislikeRatioPercent = totalAiAnswers == 0 ? 0.0 : round1(totalFeedback * 100.0 / totalAiAnswers);
+
+        List<AdminDashboardStatsResponse.RecentFeedbackItem> recentFeedback = chatFeedbackRepository
+                .findRecentDislikes(PageRequest.of(0, RECENT_FEEDBACK_LIMIT))
+                .stream()
+                .map(this::toRecentFeedbackItem)
+                .toList();
+
+        return new AdminDashboardStatsResponse(
+                totalFeedback,
+                weeklyFeedback,
+                dislikeRatioPercent,
+                breakdown,
+                recentFeedback,
+                LocalDateTime.now()
+        );
+    }
+
+    private AdminDashboardStatsResponse.RecentFeedbackItem toRecentFeedbackItem(ChatFeedbackDataset feedback) {
+        String code = extractReasonCode(feedback.getReason());
+        String normalizedCode = code == null ? "OTHER" : code;
+        String label = REASON_LABELS.getOrDefault(normalizedCode, REASON_LABELS.get("OTHER"));
+        String detail = extractReasonDetail(feedback.getReason());
+
+        return new AdminDashboardStatsResponse.RecentFeedbackItem(
+                feedback.getFeedbackId(),
+                truncateTitle(feedback.getPrompt()),
+                normalizedCode,
+                label,
+                detail != null ? detail : label,
+                feedback.getCreatedAt()
+        );
+    }
+
+    /**
+     * reason 컬럼에서 상세설명만 뽑아낸다 (코드 접두어 제외).
+     * - "TERM_MISMATCH: 상세설명" -> "상세설명"
+     * - "[TERM_MISMATCH] 상세설명" -> "상세설명"
+     * - 접두어뿐이거나 상세설명이 없으면 null.
+     */
+    private String extractReasonDetail(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return null;
+        }
+        String trimmed = reason.trim();
+        String detail;
+        if (trimmed.startsWith("[")) {
+            int end = trimmed.indexOf(']');
+            detail = end >= 0 && end + 1 < trimmed.length() ? trimmed.substring(end + 1).trim() : "";
+        } else if (trimmed.contains(":")) {
+            detail = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+        } else {
+            detail = "";
+        }
+        return detail.isBlank() ? null : detail;
+    }
+
+    /**
+     * prompt(사용자 질문 원문)를 목록 카드용 짧은 제목으로 자른다.
+     * 실제 "제목" 컬럼이 없어서 대체하는 것이므로, 줄바꿈은 공백으로 치환하고 길이만 제한한다.
+     */
+    private String truncateTitle(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            return "(제목 없음)";
+        }
+        String singleLine = prompt.trim().replaceAll("\\s+", " ");
+        if (singleLine.length() <= TITLE_MAX_LENGTH) {
+            return singleLine;
+        }
+        return singleLine.substring(0, TITLE_MAX_LENGTH) + "…";
+    }
+
+    private double round1(double value) {
+        return Math.round(value * 10) / 10.0;
     }
 
     /**
