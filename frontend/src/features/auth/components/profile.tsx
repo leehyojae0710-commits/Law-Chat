@@ -35,8 +35,14 @@ export const Profile = () => {
     }
     const uploadProfile = async () => {
         const payload: { nickName?: string; phone?: string } = {}
-        if (newNickName) payload.nickName = newNickName;
-        if (newPhone) payload.phone = newPhone;
+        if (newNickName) {
+            payload.nickName = newNickName;
+            console.log("Updating nickname to:", newNickName);
+        }
+        if (newPhone) {
+            payload.phone = newPhone;
+            console.log("Updating phone to:", newPhone);
+        }
         try {
             const res = await updateProfile(payload);
             if (res) {
@@ -47,6 +53,17 @@ export const Profile = () => {
         catch (error) {
             console.error("Error updating profile:", error);
             return null;
+        }
+    }
+    const uploadProfileImg = async () => {
+        try{
+            const res = await updateProfileImg(newProfileImg as File);
+            if (res) {
+                setUserProfileImg(res.profileImg || "");
+            }
+        }
+        catch (error) {
+            console.error("Error updating profile image:", error);
         }
     }
     return (
@@ -78,6 +95,14 @@ export const Profile = () => {
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
             />
+            <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setNewProfileImg(e.target.files?.[0] || null)}
+            />
+            <button onClick={uploadProfileImg}>
+                프로필 이미지 업데이트
+            </button>
         </div>
     )
 }

@@ -22,15 +22,17 @@ export const getMe = async (): Promise<AuthUser_Profile> => {
   return res.data;
 };
 
-export const updateProfile = async(data : {nickName?:string , phone?:string}): Promise<AuthUser_Profile> => {
+export const updateProfile = async(data : {nickname?:string , phone?:string}): Promise<AuthUser_Profile> => {
+  console.log("updateProfile payload:", data);
   const res = await apiClient.patch<AuthUser_Profile>("/users/me", data);
+  console.log("updateProfile response:", res.data);
   return res.data;
 }
 
 export const updateProfileImg = async (file: File): Promise<AuthUser_Profile> => {
   const formData = new FormData();
-  formData.append("profileImg", file);
-  const res = await apiClient.patch<AuthUser_Profile>("/users/me/profileImg", formData, {
+  formData.append("file", file);
+  const res = await apiClient.post<AuthUser_Profile>("/users/me/profile-image", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
