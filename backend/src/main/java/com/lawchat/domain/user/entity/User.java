@@ -164,16 +164,25 @@ public class User {
     /**
      * 프로필 수정. null 로 들어온 값은 "변경하지 않음"으로 처리한다(부분 수정).
      *
+     * phone 도 nickname/profileImg 와 동일한 규칙을 따른다.
+     * "번호를 지운다"는 별도 의미를 이번에는 지원하지 않는다 — phone 컬럼에는
+     * UNIQUE 제약이 걸려 있어, 여러 회원이 동시에 빈 문자열로 바꾸면 중복 충돌이
+     * 나므로 "지우기"는 이 API 의 범위 밖으로 명확히 남겨둔다.
+     * 값을 바꾸고 싶으면 새 번호를 보내고, 굳이 지우고 싶다면 관리자 처리로 남긴다.
+     *
      * 영속 상태(=조회해온) 엔티티의 필드를 바꾸면 트랜잭션 커밋 시점에
      * Hibernate 가 변경 감지(dirty checking)로 UPDATE 를 자동 생성한다.
      * 따라서 repository.save() 를 다시 호출할 필요가 없다.
      */
-    public void updateProfile(String nickname, String profileImg) {
+    public void updateProfile(String nickname, String profileImg, String phone) {
         if (nickname != null && !nickname.isBlank()) {
             this.nickname = nickname;
         }
         if (profileImg != null) {
             this.profileImg = profileImg;
+        }
+        if (phone != null && !phone.isBlank()) {
+            this.phone = phone;
         }
     }
 

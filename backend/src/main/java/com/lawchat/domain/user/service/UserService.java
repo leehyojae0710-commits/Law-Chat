@@ -10,6 +10,7 @@ import com.lawchat.domain.user.entity.User;
 import com.lawchat.domain.user.repository.UserRepository;
 import com.lawchat.global.exception.BusinessException;
 import com.lawchat.global.exception.ErrorCode;
+import com.lawchat.global.file.FileStorageService;
 import com.lawchat.global.security.JwtTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +38,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final FileStorageService fileStorageService;
+    private final ProfileImageValidator profileImageValidator;
     private final RestClient restClient;
 
     @Value("${oauth.kakao.client-id:}")
@@ -58,10 +62,14 @@ public class UserService {
 
     public UserService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtTokenProvider jwtTokenProvider) {
+                       JwtTokenProvider jwtTokenProvider,
+                       FileStorageService fileStorageService,
+                       ProfileImageValidator profileImageValidator) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.fileStorageService = fileStorageService;
+        this.profileImageValidator = profileImageValidator;
         this.restClient = RestClient.create();
     }
 
@@ -262,8 +270,27 @@ public class UserService {
         return AuthVerifyResponse.from(getUser(userId));
     }
 
+    /**
+     * 프로필 수정.
+     *
+     * ★ phone 파라미터가 추가된 이유
+     *   기존에는 nickname/profileImg 만 받았는데, 전화번호도 마이페이지에서
+     *   수정 가능해야 한다는 요구사항이 추가되어 phone 을 받도록 확장했다.
+     *
+     * ★ 프론트가 안 바뀌어도 되는 이유
+     *   기존 프론트는 요청 바디에 phone 필드를 아예 넣지 않는다.
+     *   JSON 에 없는 필드는 Jackson 이 자동으로 null 로 역직렬화하므로,
+     *   phone 파라미터는 자연스럽게 null 로 들어오고 User.updateProfile() 이
+     *   null 이면 건드리지 않으므로 기존 동작(닉네임/프로필사진만 수정)이 그대로 유지된다.
+     *   전화번호 수정 UI 가 추가되면 그때 프론트가 phone 필드를 body 에 얹기만 하면 된다.
+     *
+     * ★ 정규화 + 중복확인을 회원가입(signup)과 동일한 규칙으로 맞춘 이유
+     *   phone 컬럼에 UNIQUE 제약이 있어, 형식이 다른 같은 번호("010-1234-5678" vs
+     *   "01012345678")가 서로 다른 값으로 취급되어 중복 체크를 빠져나가면 안 된다.
+     *   그래서 회원가입 때와 동일하게 숫자만 남기고 비교한다.
+     */
     @Transactional
-    public UserProfileResponse updateProfile(Long userId, String nickname, String profileImg) {
+    public UserProfileResponse updateProfile(Long userId, String nickname, String profileImg, String phone) {
         User user = getUser(userId);
 
         if (nickname != null && !nickname.isBlank() && !nickname.equals(user.getNickname())) {
@@ -272,7 +299,58 @@ public class UserService {
             }
         }
 
-        user.updateProfile(nickname, profileImg);
+        String cleanPhone = (phone != null && !phone.isBlank())
+                ? phone.replaceAll("[^0-9]", "")
+                : null;
+
+        if (cleanPhone != null && !cleanPhone.equals(user.getPhone())) {
+            if (userRepository.existsByPhone(cleanPhone)) {
+                throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
+            }
+        }
+
+        user.updateProfile(nickname, profileImg, cleanPhone);
+        return UserProfileResponse.from(user);
+    }
+
+    /**
+     * 프로필 이미지 업로드 + 반영을 한 번에 처리한다.
+     *
+     * ★ 왜 "업로드 API 따로 + PATCH 따로" 가 아니라 한 번에 처리하는가
+     *   2단계로 나누면 프론트가 (1) 업로드해서 URL 받고 (2) 그 URL 로 다시 PATCH 를
+     *   호출해야 한다. 그런데 (1)만 성공하고 (2)가 실패하면 공유폴더에는 파일이
+     *   남았는데 DB 에는 반영이 안 된 고아 파일이 생긴다.
+     *   프로필 사진은 "올리는 즉시 내 사진이 바뀐다"가 유일한 시나리오이므로
+     *   한 요청으로 묶는 편이 프론트도 단순하고 정합성도 깨지지 않는다.
+     *
+     * ★ 저장 순서 주의
+     *   파일 저장을 먼저 하고 DB 를 나중에 갱신한다.
+     *   반대로 하면 DB 는 새 파일명을 가리키는데 파일 저장이 실패해
+     *   깨진 이미지가 노출될 수 있다. 지금 순서라면 DB 갱신이 실패해도
+     *   기존 사진이 그대로 유지되고, 저장된 파일만 쓰이지 않은 채 남는다.
+     *
+     * ★ 이전 이미지는 지우지 않는다
+     *   같은 사진을 여러 곳(캐시된 페이지, 이미 내려간 응답)에서 참조 중일 수 있고,
+     *   소셜 로그인 계정은 profile_img 가 카카오/네이버 서버의 외부 URL 이라
+     *   우리 공유폴더에 있지도 않다. 잘못 지우면 남의 파일을 건드리게 된다.
+     *   미사용 파일 정리는 별도 배치의 몫으로 남긴다.
+     *
+     * @return 이미지가 반영된 최신 프로필. 프론트는 이 응답으로 바로 화면을 갱신하면 된다.
+     */
+    @Transactional
+    public UserProfileResponse updateProfileImage(Long userId, MultipartFile file) {
+        profileImageValidator.validate(file);
+
+        User user = getUser(userId);
+
+        String storedFilename = fileStorageService.store(file);
+
+        // DB 에는 파일명만 저장한다(서버 위치가 바뀌어도 마이그레이션 불필요).
+        // 절대 URL 로의 변환은 UserProfileResponse 가 담당한다.
+        user.updateProfile(null, storedFilename, null);
+
+        log.info("프로필 이미지 변경 - userId={}, filename={}", userId, storedFilename);
+
         return UserProfileResponse.from(user);
     }
 

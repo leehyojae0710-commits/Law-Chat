@@ -52,6 +52,8 @@ public enum ErrorCode {
     // 400 - notice 도메인 추가
     INVALID_POPUP_PERIOD(HttpStatus.BAD_REQUEST, "노출 종료 일시는 시작 일시보다 뒤여야 합니다."),
     INVALID_FILE(HttpStatus.BAD_REQUEST, "유효하지 않은 파일입니다."),
+    FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "파일 크기는 5MB를 넘을 수 없습니다."),
+    UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "PNG, JPG, GIF, WEBP 이미지만 업로드할 수 있습니다."),
 
     // 500
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다. 잠시 후 다시 시도해주세요."),
