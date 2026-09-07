@@ -23,6 +23,10 @@ apiClient.interceptors.request.use(
       sessionStorage.getItem("token") ||
       localStorage.getItem("token");
 
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
