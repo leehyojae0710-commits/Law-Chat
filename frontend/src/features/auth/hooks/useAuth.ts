@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { login as loginApi, signup as signupApi, logoutApi, kakaoLogin as kakaoLoginApi, naverLogin as NaverLoginApi} from "../../../api/auth";
+import { login as loginApi, signup as signupApi, logoutApi, kakaoLogin as kakaoLoginApi, naverLogin as NaverLoginApi, deleteUserAccount} from "../../../api/auth";
 import { mockLogin, mockSignup, mockLogout } from "../mockAuth";
 import { useAuthStore } from "../../../store/authStore";
 import type { LoginPayload, SignupPayload } from "../types";
@@ -67,6 +67,11 @@ export const useAuth = () => {
     setAuth(user, accessToken);
     return user;
   }
+  
+  const deleteUser = async () => {
+    await deleteUserAccount();
+    logoutStore();
+  }
 
-  return { login, signup, logout, kakaoLogin, naverLogin, isLoading, error };
+  return { login, signup, logout, kakaoLogin, naverLogin, deleteUser, isLoading, error };
 };

@@ -56,3 +56,7 @@ export const naverLogin = async (code: string, state: string): Promise<AuthRespo
   return res.data;
 };
 
+
+export const deleteUserAccount = async (): Promise<void> => {
+  await apiClient.delete("/users/me");
+}

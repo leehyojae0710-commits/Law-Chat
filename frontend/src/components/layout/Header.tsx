@@ -14,7 +14,7 @@ const navItems = [
 
 export const Header = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, deleteUser } = useAuth();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isAdmin = useAuthStore((s) => s.isAdmin);
 
@@ -22,6 +22,10 @@ export const Header = () => {
     await logout();
     navigate("/");
   };
+  const handleDeleteAccount = async () => {
+    await deleteUser();
+    navigate("/");
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-100 bg-white shadow-sm">
@@ -58,6 +62,13 @@ export const Header = () => {
               >
                 로그아웃
               </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                회원탈퇴
+              </button>
               <Link
                 to={isAdmin ? "/admin" : "/chat"}
                 className="px-4 py-2 rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-700 transition-colors"
@@ -81,8 +92,8 @@ export const Header = () => {
               </Link>
             </data>
           )}
-          </div>
         </div>
+      </div>
     </header>
   );
 };

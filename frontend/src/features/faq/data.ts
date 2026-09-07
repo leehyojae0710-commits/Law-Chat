@@ -26,13 +26,13 @@ export const faqItems: FaqItem[] = [
     id: "faq4",
     category: "이용 방법",
     question: "AI 답변을 PDF로 다운로드할 수 있나요?",
-    answer: "AI 답변은 PDF로 다운로드할 수 있으며, 상담 요약서에는 근거 조문과 판례 원문 링크가 포함되어 있습니다."
+    answer: "현재는 AI 답변을 PDF로 다운로드할 수 없으며 , 추후 업데이트를 통해 안내드릴 예정입니다."
   },
   {
     id: "faq5",
     category: "요금",
     question: "AI 상담은 무료인가요?",
-    answer: "AI 상담은 무료로 제공되며, 변호사 연결 서비스는 별도의 요금이 발생할 수 있습니다."
+    answer: "AI 상담은 무료로 제공되며, 변호사 연결 서비스는 제공하지 않습니다."
   },
   {
     id: "faq6",
