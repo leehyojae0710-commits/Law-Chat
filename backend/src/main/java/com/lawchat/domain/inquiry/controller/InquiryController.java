@@ -5,7 +5,8 @@ import com.lawchat.domain.inquiry.dto.response.InquiryDetailResponse;
 import com.lawchat.domain.inquiry.dto.response.InquirySummaryResponse;
 import com.lawchat.domain.inquiry.service.InquiryService;
 import com.lawchat.global.file.FileStorageService;
-import com.lawchat.global.file.FileUrls;
+import com.lawchat.global.file.FileUploadResponse;
+import com.lawchat.global.file.ImageUploadValidator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,8 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.Map;
 
 /**
  * 사용자용 1:1 문의 API.
@@ -30,6 +29,7 @@ public class InquiryController {
 
     private final InquiryService inquiryService;
     private final FileStorageService fileStorageService;
+    private final ImageUploadValidator imageUploadValidator;
 
     @PostMapping
     public ResponseEntity<Long> createInquiry(
@@ -76,14 +76,11 @@ public class InquiryController {
      * 관리자 업로드와 달리 AdminValidator 를 호출하지 않는다. 일반 사용자가 써야 하기 때문.
      */
     @PostMapping("/upload")
-    public ResponseEntity<Map<String, String>> uploadScreenshot(
+    public ResponseEntity<FileUploadResponse> uploadScreenshot(
             @AuthenticationPrincipal Long userId,
             @RequestParam("file") MultipartFile file
     ) {
-        String storedFilename = fileStorageService.store(file);
-        return ResponseEntity.ok(Map.of(
-                "fileName", storedFilename,
-                "fileUrl", FileUrls.view(storedFilename)
-        ));
+        imageUploadValidator.validate(file);
+        return ResponseEntity.ok(FileUploadResponse.of(fileStorageService.store(file)));
     }
 }

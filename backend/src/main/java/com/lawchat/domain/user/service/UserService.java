@@ -11,6 +11,7 @@ import com.lawchat.domain.user.repository.UserRepository;
 import com.lawchat.global.exception.BusinessException;
 import com.lawchat.global.exception.ErrorCode;
 import com.lawchat.global.file.FileStorageService;
+import com.lawchat.global.file.ImageUploadValidator;
 import com.lawchat.global.security.JwtTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +40,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final FileStorageService fileStorageService;
-    private final ProfileImageValidator profileImageValidator;
+    private final ImageUploadValidator imageUploadValidator;
     private final RestClient restClient;
 
     @Value("${oauth.kakao.client-id:}")
@@ -64,12 +65,12 @@ public class UserService {
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider jwtTokenProvider,
                        FileStorageService fileStorageService,
-                       ProfileImageValidator profileImageValidator) {
+                       ImageUploadValidator imageUploadValidator) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.fileStorageService = fileStorageService;
-        this.profileImageValidator = profileImageValidator;
+        this.imageUploadValidator = imageUploadValidator;
         this.restClient = RestClient.create();
     }
 
@@ -339,7 +340,7 @@ public class UserService {
      */
     @Transactional
     public UserProfileResponse updateProfileImage(Long userId, MultipartFile file) {
-        profileImageValidator.validate(file);
+        imageUploadValidator.validate(file);
 
         User user = getUser(userId);
 

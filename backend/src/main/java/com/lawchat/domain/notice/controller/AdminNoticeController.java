@@ -11,6 +11,8 @@ import com.lawchat.domain.notice.service.NoticePopupService;
 import com.lawchat.domain.notice.service.NoticeService;
 import com.lawchat.global.auth.AdminValidator;
 import com.lawchat.global.file.FileStorageService;
+import com.lawchat.global.file.FileUploadResponse;
+import com.lawchat.global.file.ImageUploadValidator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 관리자 전용 API. 권한 검증은 각 서비스 메서드 내부에서 AdminValidator 로 수행.
@@ -36,6 +37,7 @@ public class AdminNoticeController {
     private final NoticePopupService noticePopupService;
     private final FileStorageService fileStorageService;
     private final AdminValidator adminValidator;
+    private final ImageUploadValidator imageUploadValidator;
 
     // ---------- 공지사항 ----------
 
@@ -141,16 +143,12 @@ public class AdminNoticeController {
      *   fileUrl  - 업로드 직후 미리보기에 쓸 절대 URL (<img src>)
      */
     @PostMapping("/upload")
-    public ResponseEntity<Map<String, String>> uploadFile(
+    public ResponseEntity<FileUploadResponse> uploadFile(
             @AuthenticationPrincipal Long userId,
             @RequestParam("file") MultipartFile file
     ) {
         adminValidator.validate(userId);
-
-        String storedFilename = fileStorageService.store(file);
-        return ResponseEntity.ok(Map.of(
-                "fileName", storedFilename,
-                "fileUrl", com.lawchat.global.file.FileUrls.view(storedFilename)
-        ));
+        imageUploadValidator.validate(file);
+        return ResponseEntity.ok(FileUploadResponse.of(fileStorageService.store(file)));
     }
 }

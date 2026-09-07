@@ -63,15 +63,19 @@ public class FileStorageService {
         }
 
         String storedFilename = UUID.randomUUID() + "_" + sanitize(file.getOriginalFilename());
-        Path targetPath = Paths.get(uploadDir).resolve(storedFilename);
+        Path baseDir = Paths.get(uploadDir);
+        Path targetPath = baseDir.resolve(storedFilename);
 
         try {
+            // 공유폴더가 비어 있는 최초 배포나 경로 변경 직후에도 동작하도록 보장한다.
+            // 이미 있으면 아무 일도 하지 않는다.
+            Files.createDirectories(baseDir);
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             // 원인(네트워크 경로 끊김, 권한 문제 등)은 로그에만 남기고
             // 클라이언트에는 일반화된 메시지만 노출한다.
-            log.warn("파일 업로드 실패 - uploadDir={}, filename={}, cause={}",
-                    uploadDir, storedFilename, e.getMessage());
+            // 스택트레이스까지 남긴다 — getMessage() 만으로는 UNC 권한 문제인지 경로 문제인지 구분이 안 된다.
+            log.warn("파일 업로드 실패 - uploadDir={}, filename={}", uploadDir, storedFilename, e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
         }
 
