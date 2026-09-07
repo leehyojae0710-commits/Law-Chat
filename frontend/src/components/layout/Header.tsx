@@ -23,6 +23,9 @@ export const Header = () => {
     navigate("/");
   };
   const handleDeleteAccount = async () => {
+    const isConfirmed = window.confirm("회원 탈퇴 하시겠습니까?");
+    if (!isConfirmed) return;
+
     await deleteUser();
     navigate("/");
   }
@@ -41,15 +44,17 @@ export const Header = () => {
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className="text-sm text-slate-600 hover:text-violet-600 transition-colors"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems
+            .filter((_, index) => index !== 4 || !isAdmin)
+            .map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className="text-sm text-slate-600 hover:text-violet-600 transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
         </nav>
 
         <div className="flex items-center">
@@ -62,13 +67,15 @@ export const Header = () => {
               >
                 로그아웃
               </button>
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                회원탈퇴
-              </button>
+              {!isAdmin &&
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  회원탈퇴
+                </button>
+              }
               <Link
                 to={isAdmin ? "/admin" : "/chat"}
                 className="px-4 py-2 rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-700 transition-colors"

@@ -29,6 +29,22 @@ export const SignupForm = () => {
       // error 상태는 useAuth에서 관리
     }
   };
+  const formatPhoneNumber = (value: string) => {
+    // 숫자만 남기기
+    const numbers = value.replace(/[^0-9]/g, "").slice(0, 11);
+
+    if (numbers.length < 4) {
+      return numbers;
+    } else if (numbers.length < 8) {
+      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    } else {
+      return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`;
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhone(formatPhoneNumber(e.target.value));
+  };
 
   return (
     <form onSubmit={handleSubmit} className="w-[400px] border border-slate-200 rounded-xl p-8 space-y-4 shadow-sm">
@@ -66,11 +82,11 @@ export const SignupForm = () => {
         <input
           type="tel"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="01012345678"
+          onChange={handlePhoneChange}
+          placeholder="010-1234-5678"
           required
-          pattern="01[0-9]-?[0-9]{3,4}-?[0-9]{4}"
-          title="올바른 휴대폰 번호 형식이 아닙니다. (예: 01012345678)"
+          pattern="01[0-9]-[0-9]{3,4}-[0-9]{4}"
+          title="올바른 휴대폰 번호 형식이 아닙니다. (예: 010-1234-5678)"
           className="w-full mt-1 border rounded-lg px-3 py-2.5 text-sm"
         />
         <p className="text-xs text-gray-400 mt-1">아이디 찾기·비밀번호 재설정에 사용돼요.</p>

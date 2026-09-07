@@ -48,13 +48,14 @@ export const NewChatInput = ({ onSend, isSending, variant = "hero" }: NewChatInp
           className="w-full resize-none text-[15px] text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
         <div className="mt-2 flex items-center justify-between">
-          {isHero ? (
+          {/* {isHero ? (
             <button type="button" className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
               <span aria-hidden>＋</span> 파일 첨부
             </button>
           ) : (
             <span />
-          )}
+          )} */}
+          <span />
           <div className="flex items-center gap-3">
             {isHero && <span className="text-xs text-slate-400 dark:text-slate-500">{value.length} / {MAX_LENGTH}</span>}
             <button

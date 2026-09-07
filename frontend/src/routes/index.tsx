@@ -19,8 +19,10 @@ import { UserRoute } from "./UserRoute";
 import { KakaoCallbackPage } from "../pages/KakaoCallbackPage";
 import { NaverCallbackPage } from "../pages/NaverCallbackPage";
 import { ProfileTest } from "../pages/proflieTest";
+import { useAuthStore } from "../store/authStore";
 
 export const AppRoutes = () => {
+  const isAdmin = useAuthStore((state) => state.isAdmin);
   return (
     <Routes>
       <Route element={<PublicLayout />}>
@@ -29,7 +31,7 @@ export const AppRoutes = () => {
         <Route path="/features" element={<ServiceFeaturesPage />} />
         <Route path="/faq" element={<FaqPage />} />
         <Route path="/precedents" element={<PrecedentSearchPage />} />
-        <Route path="/support" element={<SupportPage />} />
+        {!isAdmin && <Route path="/support" element={<SupportPage />} />}
         <Route path="/notices" element={<NoticePage />} />
         <Route path="/kakao/OAuth" element={<KakaoCallbackPage />} />
         <Route path="/naver/OAuth" element={<NaverCallbackPage />} />

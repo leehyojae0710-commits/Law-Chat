@@ -4,7 +4,7 @@ import { Disclaimer } from "../components/layout/Disclaimer";
 
 export const LandingPage = () => {
   return (
-      <div className="bg-white">
+      <div className="bg-white min-h-screen">
         <Hero />
         <PopularQuestions />
         <Disclaimer />
