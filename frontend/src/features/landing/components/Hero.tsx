@@ -58,9 +58,9 @@ export const Hero = () => {
                   </data>
                 )
               }
-              <button className="px-5 py-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+              {/* <button className="px-5 py-3 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
                 이용 방법 보기
-              </button>
+              </button> */}
             </div>
 
             <div className="mt-8 flex items-center gap-6">
