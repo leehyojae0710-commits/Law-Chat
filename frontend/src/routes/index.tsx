@@ -20,6 +20,7 @@ import { KakaoCallbackPage } from "../pages/KakaoCallbackPage";
 import { NaverCallbackPage } from "../pages/NaverCallbackPage";
 import { ProfileTest } from "../pages/proflieTest";
 import { useAuthStore } from "../store/authStore";
+import { FindAccountForm } from "../features/support/components/FindAccountForm";
 
 export const AppRoutes = () => {
   const isAdmin = useAuthStore((state) => state.isAdmin);
@@ -42,6 +43,7 @@ export const AppRoutes = () => {
 
       <Route path="/profile" element={<ProfileTest />} />
 
+      <Route path="/find" element={<FindAccountForm/>}/>
       <Route
         element={
           <UserRoute>

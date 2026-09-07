@@ -31,7 +31,7 @@ export const SupportPage = () => {
               onDeleted={() => setSelectedInquiryId(null)}
             />
           ))}
-        {tab === "find-account" && <FindAccountForm />}
+        {/* {tab === "find-account" && <FindAccountForm />} */}
       </div>
     </div>
     </div>

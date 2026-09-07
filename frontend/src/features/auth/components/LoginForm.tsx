@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 
 import { KakaoLoginButton } from "../components/kakaoLogin"
 import { NaverLoginButton } from "../components/naverLogin"
+import { FindPassword_Id } from "./FindPwID";
 
 
 export const LoginForm = () => {
@@ -17,8 +18,8 @@ export const LoginForm = () => {
     try {
       await login({ email, password });
       navigate("/");
-    } catch(err) {
-      console.error("로그인 실패",err);
+    } catch (err) {
+      console.error("로그인 실패", err);
     }
   };
 
@@ -64,7 +65,7 @@ export const LoginForm = () => {
       </button>
       <button
         type="button"
-        onClick={()=>navigate("/Signup")}
+        onClick={() => navigate("/Signup")}
         className="w-full py-3 rounded-lg bg-violet-600 text-white font-medium disabled:opacity-50"
       >
         회원가입
@@ -73,6 +74,7 @@ export const LoginForm = () => {
       <div className="flex flex-col gap-3">
         <KakaoLoginButton />
         <NaverLoginButton />
+        <FindPassword_Id />
       </div>
     </form>
   );

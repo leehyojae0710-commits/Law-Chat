@@ -1,4 +1,4 @@
-export type SupportTab = "inquiry-form" | "inquiry-list" | "find-account";
+export type SupportTab = "inquiry-form" | "inquiry-list";
 
 export type InquiryCategory = "BUG" | "USAGE" | "ACCOUNT" | "ETC";
 

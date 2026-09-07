@@ -8,7 +8,7 @@ interface SupportSideMenuProps {
 const menuItems: { key: SupportTab; label: string }[] = [
   { key: "inquiry-form", label: "1:1 문의하기" },
   { key: "inquiry-list", label: "문의함" },
-  { key: "find-account", label: "아이디·비밀번호 찾기" },
+  // { key: "find-account", label: "아이디·비밀번호 찾기" },
 ];
 
 export const SupportSideMenu = ({ active, onSelect }: SupportSideMenuProps) => {
