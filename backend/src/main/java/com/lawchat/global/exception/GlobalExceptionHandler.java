@@ -7,6 +7,10 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -46,6 +50,39 @@ public class GlobalExceptionHandler {
                 .status(ErrorCode.INVALID_INPUT.getStatus())
                 .body(ErrorResponse.of(ErrorCode.INVALID_INPUT,
                         ErrorCode.INVALID_INPUT.getMessage(), fieldErrors));
+    }
+
+    /**
+     * multipart 요청이 아니거나 file 파트가 빠진 경우.
+     *
+     * ★ 별도 핸들러를 둔 이유
+     *   이 예외는 클라이언트가 요청을 잘못 만든 것이라 400 계열이다.
+     *   핸들러가 없으면 아래 handleUnexpected 로 떨어져 500 으로 응답하는데,
+     *   그러면 프론트 문제인지 서버 문제인지 구분이 안 돼 디버깅이 크게 길어진다.
+     */
+    @ExceptionHandler({
+            MultipartException.class,
+            MissingServletRequestPartException.class,
+            MissingServletRequestParameterException.class
+    })
+    public ResponseEntity<ErrorResponse> handleMultipart(Exception e) {
+        log.warn("[MultipartException] {}", e.getMessage());
+        return ResponseEntity
+                .status(ErrorCode.INVALID_FILE.getStatus())
+                .body(ErrorResponse.of(ErrorCode.INVALID_FILE,
+                        "파일 업로드 형식이 올바르지 않습니다. multipart/form-data 로 file 파트를 보내주세요."));
+    }
+
+    /**
+     * spring.servlet.multipart.max-file-size 초과.
+     * ImageUploadValidator 의 5MB 검사보다 먼저 톰캣 단계에서 걸리는 경우다.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        log.warn("[MaxUploadSizeExceeded] {}", e.getMessage());
+        return ResponseEntity
+                .status(ErrorCode.FILE_TOO_LARGE.getStatus())
+                .body(ErrorResponse.of(ErrorCode.FILE_TOO_LARGE, ErrorCode.FILE_TOO_LARGE.getMessage()));
     }
 
     /** 그 외 예상하지 못한 모든 예외 */
