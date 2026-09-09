@@ -26,7 +26,7 @@ _FALLBACK_SCORE_THRESHOLD = 1.4
 
 # ──────────────────────────────────────────────────────────────
 # Spring 백엔드(LegalSourceResponse: lawName/articleNumber/url) 연동용.
-# db_loader.py가 이미 metadata에 source_id(법령ID 또는 판례일련번호)를 채워두므로,
+# db_loader.py가 이미 metadata에 source_id(법령ID또는 판례일련번호)를 채워두므로,
 # 그걸로 국가법령정보센터 상세 페이지 URL을 만들어 응답에 실어보낸다.
 #
 # source_id는 db_loader.py에서 법령=법령일련번호(MST), 판례=판례일련번호로 채워진다.
