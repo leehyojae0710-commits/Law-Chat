@@ -21,12 +21,10 @@ ALL_LEGAL_TYPES: list[str] = ["civil", "criminal", "administrative"]
 _INDEX_CACHE: dict[str, tuple] = {}
 _RRF_K = 60
 _DENSE_SCORE_THRESHOLD = 1.0
-_MIN_DENSE_DOCS = 2  # 이보다 적게 남으면 근거 부족으로 보고 threshold를 완화해 재시도
-_FALLBACK_SCORE_THRESHOLD = 1.4
 
 # ──────────────────────────────────────────────────────────────
 # Spring 백엔드(LegalSourceResponse: lawName/articleNumber/url) 연동용.
-# db_loader.py가 이미 metadata에 source_id(법령ID 또는 판례일련번호)를 채워두므로,
+# db_loader.py가 이미 metadata에 source_id(법령ID또는 판례일련번호)를 채워두므로,
 # 그걸로 국가법령정보센터 상세 페이지 URL을 만들어 응답에 실어보낸다.
 #
 # source_id는 db_loader.py에서 법령=법령일련번호(MST), 판례=판례일련번호로 채워진다.
@@ -116,18 +114,17 @@ def retrieve_context(
             f"score_threshold={score_threshold} 초과로 제외"
         )
 
-    # [Fallback] 엄격한 threshold 탓에 근거 문서가 너무 적게 남으면(예: 구어체 질문이라
-    # 임베딩 유사도가 낮게 나오는 경우), 이미 가져온 dense_hits 안에서 완화된 threshold로
-    # 한 번 더 필터링한다 (FAISS 재검색 없이 재필터링만 하므로 비용이 거의 없음).
-    # 목적: 근거 부족 -> 모델이 조문을 지어내는(할루시네이션) 상황을 줄이는 것.
-    if len(dense_docs) < _MIN_DENSE_DOCS and score_threshold < _FALLBACK_SCORE_THRESHOLD:
-        relaxed_docs = [d for d, score in dense_hits if score <= _FALLBACK_SCORE_THRESHOLD]
-        if len(relaxed_docs) > len(dense_docs):
-            logger.info(
-                f"[{legal_type}] 근거 문서 부족({len(dense_docs)}건) -> "
-                f"score_threshold={_FALLBACK_SCORE_THRESHOLD}로 완화하여 {len(relaxed_docs)}건 확보"
-            )
-            dense_docs = relaxed_docs
+    # (2026-09: threshold 완화 fallback 제거)
+    # 예전엔 근거 문서가 _MIN_DENSE_DOCS(2건) 미만이면 threshold를 완화해 재필터링했는데,
+    # 이게 "양자과학기술법"처럼 질문과 무관한 문서를 억지로 끌어와 답변에 인용되는 원인이었다.
+    # format_context_block()이 이미 근거가 없을 때 "구체적 조문·판례를 단정 인용하지 말라"는
+    # 안전한 경로를 모델에게 제공하므로, 무관한 문서로 채우는 것보다 그냥 근거 없음으로
+    # 남겨두는 편이 안전하다. 근거 문서 수가 적을 때는 로그만 남긴다.
+    if len(dense_docs) < 2:
+        logger.info(
+            f"[{legal_type}] 근거 문서 부족({len(dense_docs)}건) -> "
+            f"threshold 완화 없이 그대로 진행 (근거 없음 안내 경로 사용)"
+        )
 
     bm25_retriever.k = dense_pool
     sparse_docs = bm25_retriever.invoke(question)
