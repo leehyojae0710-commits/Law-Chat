@@ -20,6 +20,7 @@ main.py
 """
 
 import os
+import re
 import logging
 import time
 import uuid
@@ -65,6 +66,16 @@ MODEL_GROUPS = {
 RAG_LEGAL_TYPES = ["civil", "criminal", "administrative"]
 RAG_TOP_K = 5
 
+# /chat/auto, /chat/simple에서 classify_domains()에 넘기는 다중 도메인 제한.
+# 예전에는 threshold(0.35)만 넘으면 4개 도메인 다 어댑터를 태워서 느리고,
+# 최종 병합(자유 재작성) 단계에서 결과가 이상해지는 문제가 있었다.
+# -> "진짜 여러 분야에 걸친 질문"만 최대 2개까지 병렬로 보내도록 제한.
+ROUTER_MAX_DOMAINS = 2
+ROUTER_MARGIN = 0.2
+
+# 인용 검증(할루시네이션 필터)에 쓰는 정규식. "OO법 제N조", "OO법 시행령 제N조" 형태를 잡는다.
+CITATION_PATTERN = re.compile(r"([가-힣]+법(?:\s*시행령|\s*시행규칙)?)\s*제\s*(\d+)\s*조")
+
 # qa 태스크는 RAG 컨텍스트가 프롬프트에 들어가는 만큼 조금 더 보수적으로(temperature 낮게) 생성
 QA_GEN_KWARGS = dict(
     max_new_tokens=2560, do_sample=True, top_p=0.9, temperature=0.1,
@@ -76,17 +87,28 @@ DEFAULT_QA_INSTRUCTION = "질문에 대해 정확하고 간결하게 답변하�
 SYNTHESIS_GROUP = "ko_llama3"
 SYNTHESIS_SYSTEM_MSG = "여러 법 분야의 답변을 종합하여 이해하기 쉬운 하나의 답변을 작성합니다\n\n"
 SYNTHESIS_USER_TEMPLATE = '''다음은 하나의 사용자 질문에 대해 서로 다른 법 분야 관점에서 생성된 답변들입니다.
+각 답변은 이미 근거 자료(법 조문 등)를 바탕으로 작성되었습니다.
 
 사용자 질문 : "{question}"
 
 {domain_answers}
 
 위 내용을 참고하여, 법률 지식이 없는 사용자가 이해하기 쉽도록 하나의 자연스러운 답변으로 통합해서 작성하시오.
-중복되는 내용은 제거하고, 각 법적 절차/쟁점이 실제로 어떤 순서나 관계로 연결되는지 설명하시오.
+
+반드시 지킬 것:
+- 중복되는 내용은 제거하고, 각 법적 절차/쟁점이 실제로 어떤 순서나 관계로 연결되는지 설명할 것.
+- 위에 제시된 답변들에 없는 새로운 법 조문, 판례, 수치, 사실을 추가로 지어내지 말 것.
+- 각 답변에 인용된 법 조문(예: "OO법 제N조")은 표현을 다듬더라도 조문 번호 자체는 원문 그대로 유지할 것.
+- 원문에 없는 결론이나 확정적인 법적 판단을 새로 만들지 말 것.
 '''
 SYNTHESIS_GEN_KWARGS = dict(
-    max_new_tokens=3840, do_sample=True, top_p=0.9, temperature=0.3,
+    max_new_tokens=3840, do_sample=True, top_p=0.9, temperature=0.2,
     repetition_penalty=1.2, no_repeat_ngram_size=3,
+)
+
+UNVERIFIED_CITATION_NOTE = (
+    "\n\n(※ 위 답변에 포함된 일부 법 조문은 검색된 근거 자료에서 확인되지 않았습니다. "
+    "실제 적용 전 원문을 다시 확인하시기 바랍니다.)"
 )
 
 state = {"groups": {}, "adapter_to_group": {}}
@@ -293,10 +315,18 @@ class SummarizeResponse(BaseModel):
     plain_summary: str | None  # plain=true일 때만 채워짐 (용어 풀이 버전)
 
 
-def build_rag_prompt(tokenizer, legal_type: str, instruction: str, question: str, k: int = RAG_TOP_K):
-    """qa 태스크 전용. 검색 -> 컨텍스트 조합 -> 근거주의 프롬프트 구성까지 한번에 수행."""
+def build_rag_prompt(
+    tokenizer, legal_type: str, instruction: str, question: str,
+    retrieval_query: str | None = None, k: int = RAG_TOP_K,
+):
+    """qa 태스크 전용. 검색 -> 컨텍스트 조합 -> 근거주의 프롬프트 구성까지 한번에 수행.
+
+    retrieval_query: 검색(RAG)에만 쓸 정형화된 질문. 없으면 question을 그대로 검색에도 쓴다.
+    생성(답변) 프롬프트에는 항상 원문 question을 넣는다 — 어댑터가 사용자 말투를 그대로
+    받는 형태로 파인튜닝되었을 수 있어, 정형화 문장으로 바꿔치기하면 답변 품질이 달라질 위험이 있다.
+    """
     try:
-        retrieved = retrieve_context(legal_type, question, k=k)
+        retrieved = retrieve_context(legal_type, retrieval_query or question, k=k)
     except FileNotFoundError:
         log.warning(f"[RAG] '{legal_type}' 인덱스가 없어 검색 없이 진행합니다 (환각 위험 있음).")
         retrieved = []
@@ -305,6 +335,73 @@ def build_rag_prompt(tokenizer, legal_type: str, instruction: str, question: str
     messages = build_rag_messages(instruction, question, context_block)
     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     return prompt, retrieved
+
+
+def _extract_citations(text: str) -> set[tuple[str, str]]:
+    """답변 텍스트에서 '법 제N조' 형태의 인용을 (법명, 조문번호) 쌍으로 추출."""
+    return {(law.strip(), num) for law, num in CITATION_PATTERN.findall(text)}
+
+
+def _allowed_citations(sources: list[dict]) -> set[tuple[str, str]]:
+    """RAG로 실제 검색된 sources에서 '허용된' (법명, 조문번호) 집합을 구성.
+    article_no는 "제12조" 형태일 수도 있어 숫자만 뽑아 CITATION_PATTERN과 맞춘다."""
+    allowed = set()
+    for s in sources:
+        law_name = (s.get("law_name") or "").strip()
+        article_no = (s.get("article_no") or "")
+        num_match = re.search(r"\d+", article_no)
+        if law_name and num_match:
+            allowed.add((law_name, num_match.group()))
+    return allowed
+
+
+def _has_unverified_citation(answer: str, sources: list[dict]) -> bool:
+    """답변에 등장한 인용 중 실제 검색된 RAG 근거에 없는 게 하나라도 있으면 True.
+    sources가 아예 비어 있으면(RAG 인덱스가 없었던 경우) 판단 근거가 없으므로 검사를
+    건너뛴다(원래도 '환각 위험 있음'으로 로그가 남는 경로라 여기서 이중 경고는 생략)."""
+    if not sources:
+        return False
+    cited = _extract_citations(answer)
+    if not cited:
+        return False
+    allowed = _allowed_citations(sources)
+    return any(c not in allowed for c in cited)
+
+
+NORMALIZE_GEN_KWARGS = dict(max_new_tokens=80, do_sample=False, repetition_penalty=1.1)
+NORMALIZE_SYSTEM_MSG = (
+    "사용자의 법률 관련 질문을 검색에 적합한 격식체 한 문장으로 다시 쓰세요. "
+    "구어체, 비속어, 신조어, 은어는 표준 법률·생활 용어로 바꾸되 "
+    "사실관계와 의미는 절대 바꾸지 마세요. "
+    "다시 쓴 질문 문장 하나만 출력하고, 다른 설명이나 인사말은 절대 덧붙이지 마세요."
+)
+
+
+def normalize_legal_query(raw_text: str) -> str:
+    """구어체·비속어가 섞인 사용자 질문을 RAG 검색용 격식체 한 문장으로 정리한다.
+    실패하거나 결과가 이상하면 원문을 그대로 반환해 전체 흐름이 끊기지 않게 한다.
+    (답변 생성 프롬프트에는 쓰지 않고 검색 쿼리로만 사용 — build_rag_prompt의 retrieval_query 참고)
+    """
+    group = state.get("groups", {}).get("ko_llama3")
+    if not group:
+        return raw_text
+    try:
+        model, tokenizer = group["model"], group["tokenizer"]
+        messages = [
+            {"role": "system", "content": NORMALIZE_SYSTEM_MSG},
+            {"role": "user", "content": raw_text},
+        ]
+        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        with model.disable_adapter():
+            normalized = _run_generation(model, tokenizer, prompt, NORMALIZE_GEN_KWARGS)
+        normalized = normalized.strip().strip('"').strip()
+        # 너무 짧거나(빈 응답) 비정상적으로 길면(설명을 덧붙인 경우) 원문 사용이 더 안전
+        if not normalized or len(normalized) > len(raw_text) * 3 + 50:
+            return raw_text
+        return normalized
+    except Exception:
+        log.exception("[정형화] 질문 정형화 실패 -> 원문 그대로 검색에 사용")
+        return raw_text
 
 
 def _get_eos_ids(tokenizer) -> list[int]:
@@ -328,7 +425,9 @@ def _run_generation(model, tokenizer, prompt: str, gen_kwargs: dict) -> str:
     return " ".join(decoded.split("assistant")[1:]).strip()
 
 
-def _generate_qa(legal_type: str, text: str, instruction: str | None) -> tuple[str, str, str, list[dict]]:
+def _generate_qa(
+    legal_type: str, text: str, instruction: str | None, retrieval_query: str | None = None
+) -> tuple[str, str, str, list[dict]]:
     """QA 전용 생성. 반환: (adapter_name, group_name, answer, sources)"""
     adapter_name = f"{legal_type}_qa"
     group_name = state["adapter_to_group"].get(adapter_name)
@@ -344,10 +443,15 @@ def _generate_qa(legal_type: str, text: str, instruction: str | None) -> tuple[s
     tokenizer = group["tokenizer"]
 
     instruction = instruction or DEFAULT_QA_INSTRUCTION
-    prompt, sources = build_rag_prompt(tokenizer, legal_type, instruction, text)
+    prompt, sources = build_rag_prompt(tokenizer, legal_type, instruction, text, retrieval_query=retrieval_query)
 
     model.set_adapter(adapter_name)
     answer = _run_generation(model, tokenizer, prompt, QA_GEN_KWARGS)
+
+    if _has_unverified_citation(answer, sources):
+        log.warning(f"[{legal_type}] 검색되지 않은 법 조문 인용 발견 -> 경고 문구 추가")
+        answer = answer + UNVERIFIED_CITATION_NOTE
+
     return adapter_name, group_name, answer, sources
 
 
@@ -405,14 +509,22 @@ def chat_auto(req: AutoChatRequest):
             answer=OFF_TOPIC_REPLY,
         )
 
-    ranked = classify_domains(req.text)
+    ranked = classify_domains(req.text, max_domains=ROUTER_MAX_DOMAINS, margin=ROUTER_MARGIN)
+
+    # 구어체/비속어가 섞인 원문을 검색 전용으로 한 번만 정형화 (도메인별로 반복 호출하지 않음).
+    # 실제 답변 생성에는 항상 req.text(원문)를 그대로 사용한다 — build_rag_prompt 참고.
+    retrieval_query = normalize_legal_query(req.text)
+    if retrieval_query != req.text:
+        log.info(f"[정형화] {req.text[:50]!r} -> {retrieval_query[:50]!r}")
 
     domain_answers: list[DomainAnswer] = []
     unavailable: list[str] = []
     for legal_type, score in ranked:
         adapter_key = f"{legal_type}_qa"
         if adapter_key in state["adapter_to_group"]:
-            adapter_name, model_group, answer, sources = _generate_qa(legal_type, req.text, req.instruction)
+            adapter_name, model_group, answer, sources = _generate_qa(
+                legal_type, req.text, req.instruction, retrieval_query=retrieval_query
+            )
             domain_answers.append(
                 DomainAnswer(
                     legal_type=legal_type,
@@ -463,6 +575,18 @@ def chat_auto(req: AutoChatRequest):
             with synth_model.disable_adapter():
                 final_answer = _run_generation(synth_model, synth_tokenizer, synth_prompt, SYNTHESIS_GEN_KWARGS)
 
+            # 병합 단계는 여러 도메인 답변을 재작성하는 과정이라 개별 어댑터 답변보다
+            # 할루시네이션(없는 조문 인용) 위험이 더 크다 -> 전체 도메인의 sources를
+            # 합쳐서 병합 결과에 등장하는 인용도 한 번 더 검증한다.
+            all_sources = [
+                s.model_dump() if hasattr(s, "model_dump") else s
+                for da in domain_answers
+                for s in da.sources
+            ]
+            if _has_unverified_citation(final_answer, all_sources):
+                log.warning("[synthesis] 병합 답변에서 검색되지 않은 법 조문 인용 발견 -> 경고 문구 추가")
+                final_answer = final_answer + UNVERIFIED_CITATION_NOTE
+
     return AutoChatResponse(
         text=req.text, detected_domains=domain_answers,
         unavailable_domains=unavailable, answer=final_answer,
@@ -494,7 +618,7 @@ def chat_simple(req: SimpleChatRequest):
         history.append({"role": "assistant", "content": answer})
         return SimpleChatResponse(session_id=session_id, answer=answer, legal_type_ko=None)
 
-    ranked = classify_domains(req.text)
+    ranked = classify_domains(req.text, max_domains=ROUTER_MAX_DOMAINS, margin=ROUTER_MARGIN)
 
     legal_type = None
     for lt, _score in ranked:
@@ -521,7 +645,9 @@ def chat_simple(req: SimpleChatRequest):
             f"[이전 대화]\n{history_text}\n\n{DEFAULT_QA_INSTRUCTION}"
         )
 
-    _adapter_name, _model_group, answer, _sources = _generate_qa(legal_type, req.text, instruction)
+    _adapter_name, _model_group, answer, _sources = _generate_qa(
+        legal_type, req.text, instruction, retrieval_query=normalize_legal_query(req.text)
+    )
 
     history.append({"role": "user", "content": req.text})
     history.append({"role": "assistant", "content": answer})

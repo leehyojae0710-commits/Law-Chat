@@ -21,6 +21,8 @@ ALL_LEGAL_TYPES: list[str] = ["civil", "criminal", "administrative"]
 _INDEX_CACHE: dict[str, tuple] = {}
 _RRF_K = 60
 _DENSE_SCORE_THRESHOLD = 1.0
+_MIN_DENSE_DOCS = 2  # 이보다 적게 남으면 근거 부족으로 보고 threshold를 완화해 재시도
+_FALLBACK_SCORE_THRESHOLD = 1.4
 
 # ──────────────────────────────────────────────────────────────
 # Spring 백엔드(LegalSourceResponse: lawName/articleNumber/url) 연동용.
@@ -113,6 +115,19 @@ def retrieve_context(
             f"[{legal_type}] dense 검색 {len(dense_hits)}건 중 {dropped}건을 "
             f"score_threshold={score_threshold} 초과로 제외"
         )
+
+    # [Fallback] 엄격한 threshold 탓에 근거 문서가 너무 적게 남으면(예: 구어체 질문이라
+    # 임베딩 유사도가 낮게 나오는 경우), 이미 가져온 dense_hits 안에서 완화된 threshold로
+    # 한 번 더 필터링한다 (FAISS 재검색 없이 재필터링만 하므로 비용이 거의 없음).
+    # 목적: 근거 부족 -> 모델이 조문을 지어내는(할루시네이션) 상황을 줄이는 것.
+    if len(dense_docs) < _MIN_DENSE_DOCS and score_threshold < _FALLBACK_SCORE_THRESHOLD:
+        relaxed_docs = [d for d, score in dense_hits if score <= _FALLBACK_SCORE_THRESHOLD]
+        if len(relaxed_docs) > len(dense_docs):
+            logger.info(
+                f"[{legal_type}] 근거 문서 부족({len(dense_docs)}건) -> "
+                f"score_threshold={_FALLBACK_SCORE_THRESHOLD}로 완화하여 {len(relaxed_docs)}건 확보"
+            )
+            dense_docs = relaxed_docs
 
     bm25_retriever.k = dense_pool
     sparse_docs = bm25_retriever.invoke(question)
