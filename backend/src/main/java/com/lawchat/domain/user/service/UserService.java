@@ -131,6 +131,17 @@ public class UserService {
             throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
         }
 
+        // [전화번호 인증] 번호를 입력했으면 본인 번호인지 확인을 마쳤어야 한다.
+        //   중복검사만으로는 "남이 안 쓰는 번호" 인 것만 알 뿐, 그 번호가 본인 것인지는 모른다.
+        //   아무 번호나 넣어도 가입되면 나중에 그 번호로 아이디 찾기·비밀번호 재설정이
+        //   가능해져, 남의 번호를 적어 둔 계정이 그 사람에게 넘어간다.
+        //
+        //   인증은 /api/verification/signup/verify-code 에서 미리 마치고,
+        //   여기서는 그 흔적이 최근 것인지만 확인한다. (verifiedRecently 재사용)
+        if (cleanPhone != null && !verifiedRecently(cleanPhone)) {
+            throw new BusinessException(ErrorCode.PHONE_NOT_VERIFIED);
+        }
+
         User user = User.createLocalUser(
                 request.email(),
                 passwordEncoder.encode(request.password()),

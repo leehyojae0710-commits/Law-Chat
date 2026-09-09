@@ -42,6 +42,14 @@ public enum ErrorCode {
     /** 전화번호 인증을 거치지 않고 복구를 시도한 경우. */
     RESTORE_NOT_VERIFIED(HttpStatus.FORBIDDEN, "전화번호 인증이 필요해요. 인증을 먼저 완료해 주세요."),
 
+    /**
+     * 회원가입 시 전화번호 인증을 마치지 않은 경우.
+     *
+     * 중복검사만으로는 "남이 안 쓰는 번호" 인 것만 알 뿐,
+     * 그 번호가 본인 것인지는 확인되지 않는다.
+     */
+    PHONE_NOT_VERIFIED(HttpStatus.FORBIDDEN, "전화번호 인증을 먼저 완료해 주세요."),
+
     // 404 - NOT FOUND
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
     PRECEDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "판례를 찾을 수 없습니다."),

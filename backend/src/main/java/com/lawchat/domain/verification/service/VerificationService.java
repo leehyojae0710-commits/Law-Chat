@@ -55,8 +55,39 @@ public class VerificationService {
     // ==================================================================
 
     @Transactional
+    /**
+     * 아이디 찾기용 인증코드 발송.
+     *
+     * 가입 이력이 있을 때만 실제로 보낸다. 없으면 조용히 무시하고 성공으로 응답한다.
+     * "가입 정보가 없다" 고 알려주면 연락처를 넣어보는 것만으로 가입 여부를 알 수 있다.
+     */
     public VerificationResultResponse sendCode(SendCodeRequest request) {
+        return sendCode(request, true);
+    }
+
+    /**
+     * 인증코드 발송.
+     *
+     * ★ requireExistingUser 를 나눈 이유
+     *   아이디 찾기는 **가입된 사람만** 대상이다. 없는 연락처에 보내면
+     *   번호를 넣어보는 것만으로 가입 여부를 알아낼 수 있어 조용히 무시한다.
+     *
+     *   회원가입 인증은 정반대다. 아직 가입하지 않은 번호가 본인 것인지 확인하는 절차라
+     *   **DB 에 없어도 보내야 한다.** 기존 조건을 그대로 두면 신규 가입자는
+     *   코드를 영영 받지 못한다.
+     *
+     *   같은 저장소(id_verifications)와 발송기를 쓰되 이 조건만 다르게 한다.
+     *
+     * @param requireExistingUser true 면 가입된 연락처에만 발송 (아이디 찾기),
+     *                            false 면 가입 여부와 무관하게 발송 (회원가입 인증)
+     */
+    public VerificationResultResponse sendCode(SendCodeRequest request, boolean requireExistingUser) {
         String normalizedValue = normalize(request.contactType(), request.contactValue());
+
+        if (!requireExistingUser) {
+            issueAndSend(request.contactType(), normalizedValue);
+            return VerificationResultResponse.ok("입력하신 연락처로 인증코드를 발송했습니다.");
+        }
 
         findUserByContact(request.contactType(), normalizedValue)
                 .ifPresentOrElse(
@@ -93,28 +124,56 @@ public class VerificationService {
     // 2) 인증코드 확인 → 아이디(이메일) 반환
     // ==================================================================
 
+    /**
+     * 회원가입 인증코드 확인.
+     *
+     * ★ 아이디 찾기와 나눈 이유
+     *   아이디 찾기는 확인이 끝나면 **그 사람의 이메일을 돌려준다.**
+     *   그래서 마지막에 사용자를 조회하는데, 가입 인증에서는 그 사용자가 아직 없어
+     *   USER_NOT_FOUND 가 난다.
+     *
+     *   코드 검증 자체는 똑같으므로 그 부분만 함께 쓰고, 뒤처리를 나눈다.
+     *   여기서는 검증 흔적만 남기고 아무것도 돌려주지 않는다.
+     *   (가입 요청 시 그 흔적이 최근 것인지 확인한다)
+     */
     @Transactional
-    public FindIdResultResponse verifyCode(VerifyCodeRequest request) {
+    public void verifySignupCode(VerifyCodeRequest request) {
         String normalizedValue = normalize(request.contactType(), request.contactValue());
+        consumeCode(normalizedValue, request.code());
+        log.info("회원가입 인증 성공 - type={}", request.contactType());
+    }
 
-        // auth_target 기준으로 미검증 최신 row 조회
+    /**
+     * 인증코드를 대조하고 사용 처리한다.
+     *
+     * 성공하면 is_verified=true, used_at=now 가 기록된다.
+     * 실패 사유(없음/만료/불일치)를 구분해 던져 화면이 다른 안내를 할 수 있게 한다.
+     */
+    private IdVerification consumeCode(String normalizedValue, String code) {
         IdVerification verification = idVerificationRepository
                 .findFirstByAuthTargetAndIsVerifiedFalseOrderByCreatedAtDesc(normalizedValue)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_NOT_FOUND));
 
-        // 만료 체크 또는 최대 시도 횟수 초과 체크
-        if (LocalDateTime.now().isAfter(verification.getExpiredAt()) || verification.getAttemptCount() >= MAX_ATTEMPT_COUNT) {
+        if (LocalDateTime.now().isAfter(verification.getExpiredAt())
+                || verification.getAttemptCount() >= MAX_ATTEMPT_COUNT) {
             throw new BusinessException(ErrorCode.VERIFICATION_CODE_EXPIRED);
         }
 
-        // 인증코드 불일치 체크
-        if (!verification.getAuthCode().equals(request.code())) {
+        if (!verification.getAuthCode().equals(code)) {
             verification.increaseAttempt();
             throw new BusinessException(ErrorCode.INVALID_VERIFICATION_CODE);
         }
 
-        // 인증 성공 처리 (is_verified = true, used_at = now)
         verification.verify();
+        return verification;
+    }
+
+    public FindIdResultResponse verifyCode(VerifyCodeRequest request) {
+        String normalizedValue = normalize(request.contactType(), request.contactValue());
+
+        // 코드 대조·만료·시도횟수 확인과 사용 처리는 consumeCode 가 함께 맡는다.
+        //   회원가입 인증과 똑같은 절차라 한 곳에 둔다. 두 벌로 두면 한쪽만 고쳐진다.
+        consumeCode(normalizedValue, request.code());
 
         User user = findUserByContact(request.contactType(), normalizedValue)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
