@@ -81,7 +81,9 @@ public class SecurityConfig {
                                 "/api/auth/kakao",
                                 "/api/auth/naver",
                                 "/api/auth/naver/state",
+                                "/api/auth/restore",
                                 "/api/users/check-email",
+                                "/api/users/check-phone",
                                 "/api/users/check-nickname",
                                 "/api/verification/**"
                         ).permitAll()

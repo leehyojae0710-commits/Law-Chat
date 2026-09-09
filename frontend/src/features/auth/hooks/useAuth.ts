@@ -1,5 +1,6 @@
+import axios from "axios";
 import { useState } from "react";
-import { login as loginApi, signup as signupApi, logoutApi, kakaoLogin as kakaoLoginApi, naverLogin as NaverLoginApi, deleteUserAccount} from "../../../api/auth";
+import { login as loginApi, signup as signupApi, logoutApi, kakaoLogin as kakaoLoginApi, naverLogin as NaverLoginApi, deleteUserAccount } from "../../../api/auth";
 import { mockLogin, mockSignup, mockLogout } from "../mockAuth";
 import { useAuthStore } from "../../../store/authStore";
 import type { LoginPayload, SignupPayload } from "../types";
@@ -24,6 +25,11 @@ export const useAuth = () => {
       setAuth(user, accessToken);
       return user;
     } catch (err) {
+      // 탈퇴 계정 복구 케이스는 일반 에러 문구로 덮지 않고 그대로 던져서
+      // LoginForm에서 복구 모달을 띄울 수 있게 한다.
+      if (axios.isAxiosError(err) && err.response?.data?.code === "WITHDRAWN_USER_RESTORABLE") {
+        throw err;
+      }
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
       throw err;
     } finally {
@@ -41,6 +47,9 @@ export const useAuth = () => {
       setAuth(user, accessToken);
       return user;
     } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data?.code === "WITHDRAWN_USER_RESTORABLE") {
+        throw err;
+      }
       setError("회원가입에 실패했습니다. 입력값을 확인해주세요.");
       throw err;
     } finally {
@@ -55,7 +64,7 @@ export const useAuth = () => {
       logoutStore();
     }
   };
-  
+
   const kakaoLogin = async (code: string) => {
     const { user, accessToken } = await kakaoLoginApi(code); // 백엔드 /auth/kakao 호출
     setAuth(user, accessToken); // 여기서 로그인 상태(localStorage + zustand) 세팅됨
@@ -67,7 +76,7 @@ export const useAuth = () => {
     setAuth(user, accessToken);
     return user;
   }
-  
+
   const deleteUser = async () => {
     await deleteUserAccount();
     logoutStore();

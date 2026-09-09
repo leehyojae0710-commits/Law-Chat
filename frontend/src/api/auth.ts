@@ -60,3 +60,45 @@ export const naverLogin = async (code: string, state: string): Promise<AuthRespo
 export const deleteUserAccount = async (): Promise<void> => {
   await apiClient.delete("/users/me");
 }
+
+export interface CheckAvailabilityResult {
+  available: boolean;
+  status: "AVAILABLE" | "IN_USE" | "WITHDRAWN";
+  deletedAt: string | null;
+  deletedAtText: string | null;
+  maskedEmail: string | null;
+  restorable: boolean;
+  verifyBy: "EMAIL" | "PHONE" | null;
+  verifyTarget: string | null;
+  message: string;
+}
+
+export interface CheckAvailabilityResult {
+  available: boolean;
+  status: "AVAILABLE" | "IN_USE" | "WITHDRAWN";
+  deletedAt: string | null;
+  deletedAtText: string | null;
+  maskedEmail: string | null;
+  restorable: boolean;
+  verifyBy: "EMAIL" | "PHONE" | null;
+  verifyTarget: string | null;
+  message: string;
+}
+
+export const checkEmail = async (email: string): Promise<CheckAvailabilityResult> => {
+  const res = await apiClient.get<CheckAvailabilityResult>("/users/check-email", {
+    params: { email },
+  });
+  return res.data;
+};
+
+export const checkPhone = async (phone: string): Promise<CheckAvailabilityResult> => {
+  const res = await apiClient.get<CheckAvailabilityResult>("/users/check-phone", {
+    params: { phone },
+  });
+  return res.data;
+};
+
+export const restoreAccount = async (contactValue: string): Promise<void> => {
+  await apiClient.post("/auth/restore", { contactValue });
+};
