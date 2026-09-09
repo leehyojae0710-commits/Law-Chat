@@ -1,0 +1,10 @@
+weights/
+indexes/
+kobart/
+venv/
+__pycache__/
+*.pyc
+.git/
+.env
+*.pem
+*.log
