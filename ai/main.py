@@ -74,7 +74,10 @@ ROUTER_MAX_DOMAINS = 2
 ROUTER_MARGIN = 0.2
 
 # 인용 검증(할루시네이션 필터)에 쓰는 정규식. "OO법 제N조", "OO법 시행령 제N조" 형태를 잡는다.
-CITATION_PATTERN = re.compile(r"([가-힣]+법(?:\s*시행령|\s*시행규칙)?)\s*제\s*(\d+)\s*조")
+# 법령명 뒤에 낫표(「」)/겹낫표(『』)/따옴표 등이 붙는 경우(예: "「상표법」 제6조")가
+# 실제 생성 답변에 흔한데, 예전 패턴은 \s*(공백만 허용)라서 이런 문서를 못 잡고 그대로
+# 통과시켰다 -> 지어낸 법령이 검증을 우회하는 사례가 확인되어 괄호/따옴표류를 허용하도록 수정.
+CITATION_PATTERN = re.compile(r"([가-힣]+법(?:\s*시행령|\s*시행규칙)?)[」』》〉\"'\s]*제\s*(\d+)\s*조")
 
 # qa 태스크는 RAG 컨텍스트가 프롬프트에 들어가는 만큼 조금 더 보수적으로(temperature 낮게) 생성
 QA_GEN_KWARGS = dict(
@@ -84,27 +87,36 @@ QA_GEN_KWARGS = dict(
 
 DEFAULT_QA_INSTRUCTION = "질문에 대해 정확하고 간결하게 답변하시오."
 
-SYNTHESIS_GROUP = "ko_llama3"
-SYNTHESIS_SYSTEM_MSG = "여러 법 분야의 답변을 종합하여 이해하기 쉬운 하나의 답변을 작성합니다\n\n"
-SYNTHESIS_USER_TEMPLATE = '''다음은 하나의 사용자 질문에 대해 서로 다른 법 분야 관점에서 생성된 답변들입니다.
-각 답변은 이미 근거 자료(법 조문 등)를 바탕으로 작성되었습니다.
+# ─────────────────────────────────────────────────────────────
+# 여러 도메인 답변 병합 (2026-09: LLM 자유생성 -> 규칙 기반으로 교체)
+#
+# 교체 이유: 예전에는 ko_llama3 그룹을 disable_adapter() 상태(즉 법률 QA로 파인튜닝
+# 되지 않은 base 모델)로 돌려서 각 도메인 답변을 하나로 "자연스럽게 재작성"했는데,
+# 이게 사실상 normalize_legal_query()에서 이미 한 번 문제가 됐던 것과 똑같은 패턴이었다
+# (파인튜닝 안 된 base 모델의 자유 생성 = 사실관계 왜곡·환각 위험).
+# 실제로 max_new_tokens=3840 같은 긴 생성 길이와 맞물려 특허 명세서 문체, 답변과
+# 무관한 메타적 서술이 섞여 나오는 사례, 그리고 소스에 없는 법령("「상표법」 제6조" 등)을
+# 지어내는 사례가 확인됐다.
+#
+# 각 도메인 답변(domain_answers[i].answer)은 이미 _generate_qa()에서 근거 문서 기반으로
+# 생성되고 _has_unverified_citation()으로 한 번 검증된 상태이므로, 병합 단계는 그 결과를
+# 그대로 이어붙이기만 해도 충분하다 -> 병합 단계에서 새로운 사실/조문이 생성될 여지 자체를
+# 없앤다 (LLM 호출 없음).
+# ─────────────────────────────────────────────────────────────
+DOMAIN_LABELS_ORDINAL = ["가", "나", "다", "라"]  # ROUTER_MAX_DOMAINS(현재 2) 이상이면 이 리스트를 늘릴 것
 
-사용자 질문 : "{question}"
+MULTI_DOMAIN_INTRO = "이 질문은 여러 법 분야에 걸쳐 있어, 분야별로 나누어 안내해 드립니다.\n\n"
 
-{domain_answers}
 
-위 내용을 참고하여, 법률 지식이 없는 사용자가 이해하기 쉽도록 하나의 자연스러운 답변으로 통합해서 작성하시오.
-
-반드시 지킬 것:
-- 중복되는 내용은 제거하고, 각 법적 절차/쟁점이 실제로 어떤 순서나 관계로 연결되는지 설명할 것.
-- 위에 제시된 답변들에 없는 새로운 법 조문, 판례, 수치, 사실을 추가로 지어내지 말 것.
-- 각 답변에 인용된 법 조문(예: "OO법 제N조")은 표현을 다듬더라도 조문 번호 자체는 원문 그대로 유지할 것.
-- 원문에 없는 결론이나 확정적인 법적 판단을 새로 만들지 말 것.
-'''
-SYNTHESIS_GEN_KWARGS = dict(
-    max_new_tokens=3840, do_sample=True, top_p=0.9, temperature=0.2,
-    repetition_penalty=1.2, no_repeat_ngram_size=3,
-)
+def _merge_domain_answers(domain_answers: list) -> str:
+    """여러 도메인의 답변을 LLM 재작성 없이 규칙 기반으로 하나의 텍스트로 합친다.
+    각 섹션은 이미 검증된 개별 답변을 그대로 이어붙이므로, 병합 과정에서
+    새로운 법 조문/판례/사실이 생성(환각)될 가능성이 없다."""
+    sections = []
+    for i, da in enumerate(domain_answers):
+        label = DOMAIN_LABELS_ORDINAL[i] if i < len(DOMAIN_LABELS_ORDINAL) else str(i + 1)
+        sections.append(f"{label}) {da.legal_type_ko} 관점\n{da.answer}")
+    return MULTI_DOMAIN_INTRO + "\n\n".join(sections)
 
 UNVERIFIED_CITATION_NOTE = (
     "\n\n(※ 위 답변에 포함된 일부 법 조문은 검색된 근거 자료에서 확인되지 않았습니다. "
@@ -567,40 +579,10 @@ def chat_auto(req: AutoChatRequest):
     if len(domain_answers) == 1:
         final_answer = domain_answers[0].answer
     else:
-        if SYNTHESIS_GROUP not in state["groups"]:
-            final_answer = domain_answers[0].answer
-        else:
-            synth_group = state["groups"][SYNTHESIS_GROUP]
-            synth_model = synth_group["model"]
-            synth_tokenizer = synth_group["tokenizer"]
-
-            domain_answers_text = "\n\n".join(
-                f"[{da.legal_type_ko} 관점]\n{da.answer}" for da in domain_answers
-            )
-            synth_user_message = SYNTHESIS_USER_TEMPLATE.format(
-                question=req.text, domain_answers=domain_answers_text
-            )
-            messages = [
-                {"role": "system", "content": SYNTHESIS_SYSTEM_MSG},
-                {"role": "user", "content": f"{synth_user_message}\n\n"},
-            ]
-            synth_prompt = synth_tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-            with synth_model.disable_adapter():
-                final_answer = _run_generation(synth_model, synth_tokenizer, synth_prompt, SYNTHESIS_GEN_KWARGS)
-
-            # 병합 단계는 여러 도메인 답변을 재작성하는 과정이라 개별 어댑터 답변보다
-            # 할루시네이션(없는 조문 인용) 위험이 더 크다 -> 전체 도메인의 sources를
-            # 합쳐서 병합 결과에 등장하는 인용도 한 번 더 검증한다.
-            all_sources = [
-                s.model_dump() if hasattr(s, "model_dump") else s
-                for da in domain_answers
-                for s in da.sources
-            ]
-            if _has_unverified_citation(final_answer, all_sources):
-                log.warning("[synthesis] 병합 답변에서 검색되지 않은 법 조문 인용 발견 -> 경고 문구 추가")
-                final_answer = final_answer + UNVERIFIED_CITATION_NOTE
+        # 규칙 기반 병합 (LLM 재작성 없음) - 이유는 위 _merge_domain_answers 주석 참고.
+        # 각 섹션이 이미 _generate_qa() 단계에서 인용 검증을 거쳤으므로, 병합 단계에서
+        # 별도의 _has_unverified_citation() 재검증이 필요 없다 (새 텍스트를 생성하지 않으므로).
+        final_answer = _merge_domain_answers(domain_answers)
 
     return AutoChatResponse(
         text=req.text, detected_domains=domain_answers,
