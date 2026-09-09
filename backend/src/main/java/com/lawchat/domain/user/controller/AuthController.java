@@ -2,6 +2,7 @@ package com.lawchat.domain.user.controller;
 
 import com.lawchat.domain.user.dto.request.KakaoLoginRequest;
 import com.lawchat.domain.user.dto.request.LoginRequest;
+import com.lawchat.domain.user.dto.request.RestoreAccountRequest;
 import com.lawchat.domain.user.dto.request.NaverLoginRequest;
 import com.lawchat.domain.user.dto.request.SignupRequest;
 import com.lawchat.domain.user.dto.response.AuthResponse;
@@ -153,6 +154,37 @@ public class AuthController {
     @GetMapping("/verify")
     public ResponseEntity<AuthVerifyResponse> verify(@AuthenticationPrincipal Long userId) {
         return ResponseEntity.ok(userService.verifyToken(userId));
+    }
+
+    // ==================================================================
+    // 탈퇴 계정 복구
+    //
+    // 복구 자체는 status 를 ACTIVE 로 되돌리는 것이 전부다.
+    // users row 를 지우지 않았으므로 상담 기록·즐겨찾기가 그대로 살아난다.
+    //
+    // 본인 확인은 **기존 아이디 찾기 인증을 그대로 재사용**한다.
+    //   1) POST /api/verifications/send-code    (기존)
+    //   2) POST /api/verifications/verify-code  (기존)
+    //   3) POST /api/auth/restore               (아래) — 인증 흔적만 확인하고 복구
+    //
+    // 복구 전용 인증을 따로 만들지 않은 이유 —
+    // 그 인증만으로 이미 이메일을 알아내고 비밀번호 재설정까지 갈 수 있어,
+    // 복구만 더 엄격하게 해도 실질적으로 막아지는 것이 없다.
+    // ==================================================================
+
+    /**
+     * 탈퇴 계정 복구
+     * POST /api/auth/restore
+     *
+     * 앞서 /api/verifications/verify-code 로 인증을 마친 연락처를 보낸다.
+     * 복구만 하고 로그인은 시키지 않는다 —
+     * 인증만으로 세션까지 주면 비밀번호를 모르는 사람이 그대로 들어오게 된다.
+     * 복구 후에는 평소대로 로그인하고, 비밀번호를 모르면 비밀번호 찾기를 쓰면 된다.
+     */
+    @PostMapping("/restore")
+    public ResponseEntity<Void> restore(@Valid @RequestBody RestoreAccountRequest request) {
+        userService.restoreAccount(request.contactValue());
+        return ResponseEntity.ok().build();
     }
 
     /**

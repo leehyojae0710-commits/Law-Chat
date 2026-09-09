@@ -45,6 +45,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** 소셜 로그인 시 provider + socialId 조합으로 기존 회원 조회 */
     Optional<User> findBySocialProviderAndSocialId(SocialProvider socialProvider, String socialId);
 
+    /**
+     * 탈퇴 회원 복구 판단용 — 전화번호가 이미 정규화(숫자만)된 값으로 조회한다.
+     *
+     * 가입 화면에서 "이미 있는 계정" 인지 알리려면 이메일뿐 아니라 전화번호도 봐야 한다.
+     * 같은 사람이 이메일만 바꿔 다시 가입하려는 경우가 흔하기 때문이다.
+     */
+    Optional<User> findByPhoneAndStatus(String phone, UserStatus status);
+
+    /** 이메일 + 상태로 조회 (탈퇴 회원만 골라낼 때) */
+    Optional<User> findByEmailAndStatus(String email, UserStatus status);
+
     /** 특정 상태를 제외하고 조회할 때 사용 (예: 탈퇴 회원 제외) */
     Optional<User> findByUserIdAndStatusNot(Long userId, UserStatus status);
 
