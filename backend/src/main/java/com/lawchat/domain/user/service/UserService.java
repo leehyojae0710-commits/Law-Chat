@@ -3,11 +3,14 @@ package com.lawchat.domain.user.service;
 import com.lawchat.domain.user.dto.request.LoginRequest;
 import com.lawchat.domain.user.dto.request.SignupRequest;
 import com.lawchat.domain.user.dto.response.AuthResponse;
+import com.lawchat.domain.user.dto.response.AvailabilityResponse;
 import com.lawchat.domain.user.dto.response.AuthVerifyResponse;
 import com.lawchat.domain.user.dto.response.UserProfileResponse;
 import com.lawchat.domain.user.entity.SocialProvider;
 import com.lawchat.domain.user.entity.User;
+import com.lawchat.domain.user.entity.UserStatus;
 import com.lawchat.domain.user.repository.UserRepository;
+import com.lawchat.domain.verification.repository.IdVerificationRepository;
 import com.lawchat.global.exception.BusinessException;
 import com.lawchat.global.exception.ErrorCode;
 import com.lawchat.global.file.FileStorageService;
@@ -27,12 +30,20 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
 public class UserService {
+
+    /** 탈퇴일 표기 형식. 화면이 그대로 쓸 수 있게 완성된 문장으로 내려준다. */
+    private static final java.time.format.DateTimeFormatter WITHDRAWN_DATE_FORMAT =
+            java.time.format.DateTimeFormatter.ofPattern("yyyy년 M월 d일");
+
+    /** 인증을 마친 뒤 복구까지 허용하는 시간(분). */
+    private static final long RESTORE_VERIFY_WINDOW_MINUTES = 10;
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
@@ -42,6 +53,8 @@ public class UserService {
     private final FileStorageService fileStorageService;
     private final ImageUploadValidator imageUploadValidator;
     private final RestClient restClient;
+    /** [계정 복구] 아이디 찾기 인증을 마쳤는지 확인할 때 쓴다. */
+    private final IdVerificationRepository idVerificationRepository;
 
     @Value("${oauth.kakao.client-id:}")
     private String kakaoClientId;
@@ -65,31 +78,68 @@ public class UserService {
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider jwtTokenProvider,
                        FileStorageService fileStorageService,
-                       ImageUploadValidator imageUploadValidator) {
+                       ImageUploadValidator imageUploadValidator,
+                       IdVerificationRepository idVerificationRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.fileStorageService = fileStorageService;
         this.imageUploadValidator = imageUploadValidator;
+        this.idVerificationRepository = idVerificationRepository;
         this.restClient = RestClient.create();
     }
 
     @Transactional
     public AuthResponse signup(SignupRequest request) {
+        String rawPhone = request.phone();
+        String cleanPhone = (rawPhone != null && !rawPhone.isBlank())
+                ? rawPhone.replaceAll("[^0-9]", "")
+                : null;
+
+        // [탈퇴 회원 안내 — B안]
+        //   같은 이메일이나 전화번호로 다시 가입하려 하면 "이미 계정이 있다" 고 알린다.
+        //   예전에는 DUPLICATE_EMAIL(이미 사용 중인 이메일) 로만 막아서,
+        //   본인이 탈퇴했던 계정인데도 남이 쓰는 이메일처럼 읽혔다.
+        //   상담 기록이 그대로 남아 있는데 그것을 되찾을 방법을 안내받지 못했다.
+        //
+        //   이메일뿐 아니라 전화번호도 보는 이유 —
+        //   같은 사람이 이메일만 바꿔 다시 가입하려는 경우가 흔하다.
+        //   그때도 "기존 계정을 복구하시겠어요?" 로 안내하는 편이 낫다.
+        User withdrawn = userRepository.findByEmailAndStatus(request.email(), UserStatus.DELETED)
+                .orElse(null);
+        if (withdrawn == null && cleanPhone != null) {
+            withdrawn = userRepository.findByPhoneAndStatus(cleanPhone, UserStatus.DELETED)
+                    .orElse(null);
+        }
+        if (withdrawn != null) {
+            // 소셜 가입자는 이 화면에서 복구할 수 없어 일반 중복으로 처리한다.
+            //   비밀번호가 없어 본인 확인 수단이 없기 때문이다.
+            if (withdrawn.isSocialUser()) {
+                throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+            }
+            throw new BusinessException(ErrorCode.WITHDRAWN_USER_RESTORABLE,
+                    withdrawnMessage(withdrawn));
+        }
+
         if (userRepository.existsByEmail(request.email())) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
         if (userRepository.existsByNickname(request.nickname())) {
             throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }
-
-        String rawPhone = request.phone();
-        String cleanPhone = (rawPhone != null && !rawPhone.isBlank())
-                ? rawPhone.replaceAll("[^0-9]", "")
-                : null;
-
         if (cleanPhone != null && userRepository.existsByPhone(cleanPhone)) {
             throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
+        }
+
+        // [전화번호 인증] 번호를 입력했으면 본인 번호인지 확인을 마쳤어야 한다.
+        //   중복검사만으로는 "남이 안 쓰는 번호" 인 것만 알 뿐, 그 번호가 본인 것인지는 모른다.
+        //   아무 번호나 넣어도 가입되면 나중에 그 번호로 아이디 찾기·비밀번호 재설정이
+        //   가능해져, 남의 번호를 적어 둔 계정이 그 사람에게 넘어간다.
+        //
+        //   인증은 /api/verification/signup/verify-code 에서 미리 마치고,
+        //   여기서는 그 흔적이 최근 것인지만 확인한다. (verifiedRecently 재사용)
+        if (cleanPhone != null && !verifiedRecently(cleanPhone)) {
+            throw new BusinessException(ErrorCode.PHONE_NOT_VERIFIED);
         }
 
         User user = User.createLocalUser(
@@ -108,8 +158,30 @@ public class UserService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
 
+        // [탈퇴 회원 복구 — A안]
+        //   비밀번호가 맞는지 **먼저** 확인한 뒤에 "복구할 수 있다" 고 알린다.
+        //   순서를 바꾸면 남의 이메일을 넣어보는 것만으로 그 계정의 탈퇴 여부를 알 수 있다.
+        //   (계정 존재 여부가 새는 것이라, 로그인 실패와 구분되지 않게 두어야 한다)
         if (user.isDeleted()) {
-            throw new BusinessException(ErrorCode.WITHDRAWN_USER);
+            if (user.isSocialUser()) {
+                // 소셜 가입자는 비밀번호가 없어 여기서 본인 확인을 할 수 없다.
+                // 소셜 로그인 경로(processSocialLogin)에서 복구를 처리한다.
+                throw new BusinessException(ErrorCode.WITHDRAWN_USER);
+            }
+            boolean passwordMatches = user.getPassword() != null
+                    && passwordEncoder.matches(request.password(), user.getPassword());
+            if (!passwordMatches) {
+                // 비밀번호가 틀리면 일반 로그인 실패와 똑같이 응답한다.
+                throw new BusinessException(ErrorCode.LOGIN_FAILED);
+            }
+            // 본인이 맞다. 다만 자동으로 되살리지는 않는다 —
+            // 실수로 로그인했다가 계정이 복구되면 사용자가 의도하지 않은 결과가 된다.
+            // 화면이 확인을 받은 뒤 /auth/restore 를 부르게 한다.
+            //
+            // 탈퇴일을 문구에 담아 보낸다. 화면이 다시 조회하지 않아도
+            // "탈퇴일은 …입니다. 복구하시겠어요?" 를 그대로 띄울 수 있다.
+            throw new BusinessException(ErrorCode.WITHDRAWN_USER_RESTORABLE,
+                    withdrawnMessage(user));
         }
 
         if (user.isSocialUser()) {
@@ -375,6 +447,186 @@ public class UserService {
         User user = getUser(userId);
         user.withdraw();
     }
+
+    /**
+     * 최근에 인증을 마쳤는지 확인한다.
+     *
+     * 아이디 찾기 인증(/api/verifications/verify-code)이 남긴 흔적(used_at)을 본다.
+     * 시간 제한이 없으면 몇 달 전 기록만으로도 복구가 통과한다.
+     */
+    private boolean verifiedRecently(String contactValue) {
+        if (contactValue == null || contactValue.isBlank()) return false;
+        return idVerificationRepository
+                .findFirstByAuthTargetAndIsVerifiedTrueAndUsedAtAfterOrderByUsedAtDesc(
+                        contactValue, LocalDateTime.now().minusMinutes(RESTORE_VERIFY_WINDOW_MINUTES))
+                .isPresent();
+    }
+
+    /**
+     * [계정 복구] 탈퇴한 계정을 다시 활성 상태로 되돌린다.
+     *
+     * ★ 복구 자체는 상태값만 바꾸면 된다
+     *   탈퇴는 soft delete 라 users row 를 지우지 않는다.
+     *   상담 기록(chat_sessions)·즐겨찾기(precedent_bookmarks)는 user_id 로 물려 있어
+     *   그대로 남아 있다. status 를 ACTIVE 로 되돌리면 접근이 그대로 살아난다.
+     *
+     * ★ 본인 확인은 기존 아이디 찾기 인증을 재사용한다
+     *   전화번호(또는 이메일)로 인증코드를 받고 확인한 뒤 이 API 를 부른다.
+     *   복구 전용 인증을 따로 만들지 않은 이유 — 그 인증만으로 이미 이메일을 알아내고
+     *   비밀번호 재설정까지 갈 수 있어, 복구만 더 엄격하게 해도 막아지는 것이 없다.
+     *
+     * ★ 비밀번호는 묻지 않는다
+     *   이 경로를 타는 사람은 대개 기억하지 못한다. (기억하면 그냥 로그인했을 것이다)
+     *   복구한 뒤 비밀번호를 모르면 기존 비밀번호 찾기로 재설정하면 된다.
+     *
+     * ★ 로그인까지 시키지는 않는다
+     *   인증만으로 세션까지 주면 비밀번호를 모르는 사람이 그대로 들어오게 된다.
+     *   복구 후에는 평소대로 로그인하게 한다.
+     *
+     * ★ 보존 기간이 지난 계정은 복구되지 않는다
+     *   배치가 anonymize() 로 이메일·전화번호를 이미 null 로 지웠기 때문에
+     *   아래 조회 자체가 비어 나온다.
+     *
+     * @param contactValue 인증을 마친 연락처 (이메일 또는 전화번호)
+     */
+    @Transactional
+    public void restoreAccount(String contactValue) {
+        String raw = (contactValue == null) ? "" : contactValue.trim();
+        if (raw.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        // 전화번호는 숫자만 남겨 저장하므로 조회 전에 같은 형태로 맞춘다.
+        boolean isEmail = raw.contains("@");
+        String normalized = isEmail ? raw : raw.replaceAll("[^0-9]", "");
+
+        // 인증 단계를 건너뛰고 이 API 를 직접 호출하는 것을 막는다.
+        if (!verifiedRecently(normalized)) {
+            throw new BusinessException(ErrorCode.RESTORE_NOT_VERIFIED);
+        }
+
+        User user = (isEmail
+                ? userRepository.findByEmailAndStatus(normalized, UserStatus.DELETED)
+                : userRepository.findByPhoneAndStatus(normalized, UserStatus.DELETED))
+                .orElseThrow(() -> new BusinessException(ErrorCode.WITHDRAWN_USER_EXPIRED));
+
+        user.reactivate();
+        log.info("[계정 복구] userId={} 복구 완료", user.getUserId());
+    }
+
+    /**
+     * [중복검사] 이메일을 쓸 수 있는지 확인한다.
+     *
+     * ★ 왜 탈퇴 계정을 따로 구분하는가
+     *   users.email 에 UNIQUE 제약이 걸려 있어, 탈퇴 회원 row 가 남아 있는 한
+     *   같은 이메일로는 새 가입이 **불가능**하다.
+     *   예전에는 그 상황이 "이미 사용 중인 이메일" 로만 안내돼서,
+     *   본인이 탈퇴했던 계정인데도 남이 쓰는 것처럼 읽혔고
+     *   상담 기록이 그대로 남아 있는데 되찾을 방법을 안내받지 못했다.
+     *
+     * ★ 이메일은 이메일 인증으로 복구한다
+     *   가입하려는 이메일 = 탈퇴 계정의 이메일 이므로, 그 주소로 코드를 보내
+     *   받을 수 있는 사람인지 확인하면 본인 확인이 된다.
+     */
+    @Transactional(readOnly = true)
+    public AvailabilityResponse checkEmail(String email) {
+        String value = (email == null) ? "" : email.trim();
+        if (value.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        User found = userRepository.findByEmail(value).orElse(null);
+        if (found == null) {
+            return AvailabilityResponse.ok();
+        }
+        if (!found.isDeleted()) {
+            return AvailabilityResponse.inUse();
+        }
+
+        // 소셜 가입자는 이 화면에서 복구할 수 없다. 소셜 로그인으로 안내해야 한다.
+        if (found.isSocialUser()) {
+            return AvailabilityResponse.withdrawnNotRestorable(found.getDeletedAt(), maskEmail(found.getEmail()),
+                    "탈퇴한 소셜 계정이에요. 소셜 로그인으로 다시 이용해 주세요.");
+        }
+
+        // 가입하려는 이메일 = 탈퇴 계정의 이메일 이므로 그 주소로 인증한다.
+        return AvailabilityResponse.withdrawnRestorable(
+                found.getDeletedAt(), maskEmail(found.getEmail()), "EMAIL", value);
+    }
+
+    /**
+     * [중복검사] 전화번호를 쓸 수 있는지 확인한다.
+     *
+     * 전화번호도 UNIQUE 제약이 걸려 있어 이메일과 사정이 같다.
+     * 다만 복구 안내가 다르다 — 전화번호로 조회했으므로 **전화번호 인증**으로 복구한다.
+     *
+     * 어느 계정인지 알 수 있도록 가려진 이메일을 함께 준다.
+     * (전화번호만 입력한 사용자는 그 계정의 이메일을 모를 수 있다)
+     */
+    @Transactional(readOnly = true)
+    public AvailabilityResponse checkPhone(String phone) {
+        String digits = (phone == null) ? "" : phone.replaceAll("[^0-9]", "");
+        if (digits.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        User found = userRepository.findByPhone(digits).orElse(null);
+        if (found == null) {
+            return AvailabilityResponse.ok();
+        }
+        if (!found.isDeleted()) {
+            return AvailabilityResponse.inUse();
+        }
+
+        if (found.isSocialUser()) {
+            return AvailabilityResponse.withdrawnNotRestorable(found.getDeletedAt(), maskEmail(found.getEmail()),
+                    "탈퇴한 소셜 계정이에요. 소셜 로그인으로 다시 이용해 주세요.");
+        }
+
+        // 전화번호로 찾았으므로 그 번호로 인증한다. (이메일은 사용자가 모를 수 있다)
+        return AvailabilityResponse.withdrawnRestorable(
+                found.getDeletedAt(), maskEmail(found.getEmail()), "PHONE", digits);
+    }
+
+    /**
+     * 탈퇴 계정 안내 문구를 만든다.
+     *
+     * 로그인·가입 어느 쪽에서 걸렸든 같은 문장을 쓴다.
+     * 화면마다 조립하면 같은 상황에 다른 안내가 나간다.
+     *
+     * 남은 기간은 계산하지 않는다 — "며칠 뒤면 복구할 수 없다" 고 알리면
+     * 사용자를 재촉하게 되고, 경계 근처에서 오차 하루로 안내와 실제가 어긋난다.
+     */
+    private String withdrawnMessage(User user) {
+        String dateText = (user.getDeletedAt() == null) ? null
+                : user.getDeletedAt().format(WITHDRAWN_DATE_FORMAT);
+        String masked = maskEmail(user.getEmail());
+
+        // 어느 계정인지 함께 알려준다. 화면이 문구를 조립하지 않아도 되게
+        // 완성된 문장으로 내려준다. 화면마다 조립하면 같은 상황에 다른 안내가 나간다.
+        return (masked != null ? masked + " 계정으로 가입한 이력이 있습니다. "
+                               : "복구가 가능한 상태입니다. ")
+                + (dateText != null ? "탈퇴일은 " + dateText + "입니다. " : "")
+                + "복구하시겠습니까?";
+    }
+
+    /**
+     * 이메일 일부를 가린다.
+     *
+     * 전화번호로 조회했을 때 "어느 계정인지" 는 알려주되 전체 주소는 노출하지 않는다.
+     * 번호를 넣어보는 것만으로 그 사람의 이메일을 알아낼 수 있으면 안 된다.
+     *   hong@example.com -> ho**@example.com
+     */
+    private String maskEmail(String email) {
+        if (email == null || email.isBlank()) return null;
+        int at = email.indexOf('@');
+        if (at <= 0) return "****";
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        if (local.length() <= 2) return local.charAt(0) + "*" + domain;
+        return local.substring(0, 2) + "*".repeat(local.length() - 2) + domain;
+    }
+
 
     public boolean isEmailAvailable(String email) {
         return !userRepository.existsByEmail(email);

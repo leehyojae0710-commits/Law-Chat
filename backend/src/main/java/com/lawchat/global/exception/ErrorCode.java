@@ -27,6 +27,29 @@ public enum ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     WITHDRAWN_USER(HttpStatus.FORBIDDEN, "탈퇴한 회원입니다."),
 
+    /**
+     * 탈퇴 회원이 올바른 비밀번호로 로그인한 경우.
+     *
+     * 로그인 실패(401)와 구분해야 한다. 비밀번호는 맞았고 계정만 탈퇴 상태이므로,
+     * 화면은 "복구하시겠습니까?" 를 물어볼 수 있다.
+     * 409(CONFLICT)를 쓰는 이유 — 요청 자체는 유효하지만 현재 계정 상태와 충돌한다는 뜻이다.
+     */
+    WITHDRAWN_USER_RESTORABLE(HttpStatus.CONFLICT, "탈퇴한 계정이에요. 복구하시겠어요?"),
+
+    /** 보존 기간이 지나 개인정보가 파기된 계정 — 복구할 수 없다. */
+    WITHDRAWN_USER_EXPIRED(HttpStatus.GONE, "복구 가능 기간이 지난 계정이에요. 새로 가입해 주세요."),
+
+    /** 전화번호 인증을 거치지 않고 복구를 시도한 경우. */
+    RESTORE_NOT_VERIFIED(HttpStatus.FORBIDDEN, "전화번호 인증이 필요해요. 인증을 먼저 완료해 주세요."),
+
+    /**
+     * 회원가입 시 전화번호 인증을 마치지 않은 경우.
+     *
+     * 중복검사만으로는 "남이 안 쓰는 번호" 인 것만 알 뿐,
+     * 그 번호가 본인 것인지는 확인되지 않는다.
+     */
+    PHONE_NOT_VERIFIED(HttpStatus.FORBIDDEN, "전화번호 인증을 먼저 완료해 주세요."),
+
     // 404 - NOT FOUND
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
     PRECEDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "판례를 찾을 수 없습니다."),

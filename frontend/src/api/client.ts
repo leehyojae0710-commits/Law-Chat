@@ -14,21 +14,39 @@ export const apiClient = axios.create({
   },
 });
 
+// 인증 없이 호출해야 하는 공개 API 경로 — 여기 해당하면 토큰을 붙이지 않는다.
+// (탈퇴 계정 복구처럼 옛날 토큰이 남아있는 상태에서 호출되는 API가 있어서,
+//  무조건 토큰을 붙이면 서버가 "탈퇴 회원의 토큰"으로 401을 내려버린다.)
+const PUBLIC_PATHS = [
+  "/auth/login",
+  "/auth/signup",
+  "/auth/restore",
+  "/auth/kakao",
+  "/auth/naver",
+  "/verification/",
+  "/users/check-email",
+  "/users/check-phone",
+];
+
 apiClient.interceptors.request.use(
   (config) => {
-    // sessionStorage와 localStorage 양쪽에서 토큰을 모두 탐색
-    const token =
-      sessionStorage.getItem("accessToken") ||
-      localStorage.getItem("accessToken") ||
-      sessionStorage.getItem("token") ||
-      localStorage.getItem("token");
+    const isPublic = PUBLIC_PATHS.some((p) => config.url?.includes(p));
 
     if (config.data instanceof FormData) {
       delete config.headers["Content-Type"];
     }
 
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (!isPublic) {
+      // sessionStorage와 localStorage 양쪽에서 토큰을 모두 탐색
+      const token =
+        sessionStorage.getItem("accessToken") ||
+        localStorage.getItem("accessToken") ||
+        sessionStorage.getItem("token") ||
+        localStorage.getItem("token");
+
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },

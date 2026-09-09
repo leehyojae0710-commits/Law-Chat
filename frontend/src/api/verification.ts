@@ -64,3 +64,29 @@ export const verifyIdFindCode = async (
   });
   return res.data;
 };
+
+// ============================================================
+// 회원가입 전화번호 인증 — POST /api/verification/signup/*
+// ============================================================
+
+export const sendSignupCode = async (
+  contactValue: string
+): Promise<VerificationResult> => {
+  const res = await apiClient.post<VerificationResult>("/verification/signup/send-code", {
+    contactType: "PHONE",
+    contactValue,
+  });
+  return res.data;
+};
+
+export const verifySignupCode = async (
+  contactValue: string,
+  code: string
+): Promise<VerificationResult> => {
+  const res = await apiClient.post<VerificationResult>("/verification/signup/verify-code", {
+    contactType: "PHONE",
+    contactValue,
+    code,
+  });
+  return res.data;
+};
