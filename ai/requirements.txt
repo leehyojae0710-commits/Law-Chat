@@ -10,7 +10,7 @@ transformers==4.47.1
 peft==0.14.0
 bitsandbytes==0.45.0
 accelerate==1.2.1
-langchain-core==0.3.28
+langchain-core==0.3.29
 langchain-community==0.3.14
 langchain-huggingface==0.1.2
 faiss-cpu==1.9.0.post1   # 검색 자체는 가벼워서 CPU로 충분 (GPU는 LLM 추론에 몰아줌)
