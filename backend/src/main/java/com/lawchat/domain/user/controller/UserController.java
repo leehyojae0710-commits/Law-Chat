@@ -2,6 +2,7 @@ package com.lawchat.domain.user.controller;
 
 import com.lawchat.domain.user.dto.request.UpdateProfileRequest;
 import com.lawchat.domain.user.dto.response.UserProfileResponse;
+import com.lawchat.domain.user.dto.response.AvailabilityResponse;
 import com.lawchat.domain.user.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -122,10 +123,31 @@ public class UserController {
      * 이메일 중복 확인 (회원가입 화면에서 호출, 비로그인 허용)
      * GET /api/users/check-email?email=test@example.com
      */
+    // ★ 결과가 세 가지로 늘었다
+    //   예전에는 available(true/false) 만 돌려줬다. 그런데 users.email 에 UNIQUE 제약이 있어
+    //   **탈퇴 회원 row 가 남아 있으면 그 이메일로는 새 가입이 아예 불가능**하다.
+    //   그 상황이 "이미 사용 중" 으로만 안내돼서, 본인이 탈퇴했던 계정인데도
+    //   남이 쓰는 것처럼 읽혔고 상담 기록을 되찾을 방법을 안내받지 못했다.
+    //
+    //     AVAILABLE / IN_USE / WITHDRAWN(복구 안내)
+    //   available 필드는 그대로 남겨 두어 기존 화면이 깨지지 않는다.
     @GetMapping("/check-email")
-    public ResponseEntity<Map<String, Boolean>> checkEmail(
+    public ResponseEntity<AvailabilityResponse> checkEmail(
             @RequestParam @NotBlank @Email String email) {
-        return ResponseEntity.ok(Map.of("available", userService.isEmailAvailable(email)));
+        return ResponseEntity.ok(userService.checkEmail(email));
+    }
+
+    /**
+     * 전화번호 중복 확인
+     * GET /api/users/check-phone?phone=01012345678
+     *
+     * 전화번호에도 UNIQUE 제약이 있어 이메일과 사정이 같다.
+     * 다만 복구 안내가 다르다 — 전화번호로 조회했으므로 전화번호 인증으로 복구한다.
+     */
+    @GetMapping("/check-phone")
+    public ResponseEntity<AvailabilityResponse> checkPhone(
+            @RequestParam @NotBlank String phone) {
+        return ResponseEntity.ok(userService.checkPhone(phone));
     }
 
     /**
