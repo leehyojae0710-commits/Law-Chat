@@ -81,6 +81,7 @@ public class VerificationService {
      * @param requireExistingUser true 면 가입된 연락처에만 발송 (아이디 찾기),
      *                            false 면 가입 여부와 무관하게 발송 (회원가입 인증)
      */
+    @Transactional
     public VerificationResultResponse sendCode(SendCodeRequest request, boolean requireExistingUser) {
         String normalizedValue = normalize(request.contactType(), request.contactValue());
 
