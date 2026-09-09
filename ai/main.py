@@ -368,40 +368,55 @@ def _has_unverified_citation(answer: str, sources: list[dict]) -> bool:
     return any(c not in allowed for c in cited)
 
 
-NORMALIZE_GEN_KWARGS = dict(max_new_tokens=80, do_sample=False, repetition_penalty=1.1)
-NORMALIZE_SYSTEM_MSG = (
-    "사용자의 법률 관련 질문을 검색에 적합한 격식체 한 문장으로 다시 쓰세요. "
-    "구어체, 비속어, 신조어, 은어는 표준 법률·생활 용어로 바꾸되 "
-    "사실관계와 의미는 절대 바꾸지 마세요. "
-    "다시 쓴 질문 문장 하나만 출력하고, 다른 설명이나 인사말은 절대 덧붙이지 마세요."
-)
+# ─────────────────────────────────────────────────────────────
+# 질문 정형화 (2026-09: LLM 재작성 -> 규칙 기반으로 교체)
+#
+# 교체 이유: LLM(ko_llama3, 어댑터 비활성 상태) 기반 재작성이 "가짜였어요"를
+# "새 제품입니다"로 뒤집는 등 사실관계를 반대로 바꾸는 사례가 실제로 발생했다.
+# retrieval_query는 build_rag_prompt() 안에서 RAG 검색에만 쓰이지만(생성 프롬프트는
+# 항상 req.text 원문을 씀), 검색 자체가 엉뚱한 법령/판례를 끌고 오면 그 잘못된
+# 컨텍스트 때문에 최종 답변 품질이 그대로 망가진다 - LLM 호출 없이 "의미를 바꿀 수
+# 없는" 규칙 기반으로 바꿔서 이 리스크 자체를 없앤다.
+#
+# 목적은 완벽한 정제가 아니라, 임베딩 검색(bge-m3)이 조금이라도 더 격식체/표준어에
+# 가까운 문장을 받도록 표면적인 노이즈만 제거하는 것.
+# ─────────────────────────────────────────────────────────────
+
+_REPEAT_CHAR_PATTERN = re.compile(r"(.)\1{2,}")          # 3회 이상 반복 문자 -> 2회로 축소 (강조 뉘앙스는 살짝 남김)
+_LAUGH_CRY_PATTERN = re.compile(r"[ㅋㅎㅠㅜ]{2,}")        # "ㅋㅋㅋㅋ", "ㅠㅠㅠ" 등 감탄 표현 제거
+_WHITESPACE_PATTERN = re.compile(r"\s+")
+
+# 자주 나오는 구어체/은어 -> 표준 법률·생활 용어 매핑.
+# ⚠️ 원칙: "누가 봐도 같은 의미의 다른 표현"만 넣는다. 문맥에 따라 의미가 갈릴 수 있는
+# 단어(예: "먹튀"는 대금미지급/잠적/폭리 등 상황마다 다름)는 절대 넣지 않는다 -
+# 애매하면 LLM으로 재해석시키느니 그냥 원문 그대로 검색되게 두는 게 안전하다.
+_SLANG_MAP = {
+    "짝퉁": "위조품",
+    "짭": "가짜",
+    "먹튀": "대금 미지급",
+    "울며 겨자먹기로": "부득이하게",
+    "빡친다": "화가 난다",
+    "개빡친다": "매우 화가 난다",
+}
 
 
 def normalize_legal_query(raw_text: str) -> str:
-    """구어체·비속어가 섞인 사용자 질문을 RAG 검색용 격식체 한 문장으로 정리한다.
-    실패하거나 결과가 이상하면 원문을 그대로 반환해 전체 흐름이 끊기지 않게 한다.
-    (답변 생성 프롬프트에는 쓰지 않고 검색 쿼리로만 사용 — build_rag_prompt의 retrieval_query 참고)
+    """구어체·비속어·반복문자가 섞인 사용자 질문을 RAG 검색용으로 가볍게 정리한다.
+    규칙 기반이라 문장의 사실관계/의미를 절대 바꿀 수 없다는 게 핵심 - 실패해도
+    예외가 날 일이 없으므로 원문 반환 fallback 정도만 방어적으로 남겨둔다.
+    (답변 생성 프롬프트에는 쓰지 않고 검색 쿼리로만 사용 - build_rag_prompt의 retrieval_query 참고)
     """
-    group = state.get("groups", {}).get("ko_llama3")
-    if not group:
+    text = raw_text.strip()
+    if not text:
         return raw_text
-    try:
-        model, tokenizer = group["model"], group["tokenizer"]
-        messages = [
-            {"role": "system", "content": NORMALIZE_SYSTEM_MSG},
-            {"role": "user", "content": raw_text},
-        ]
-        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        with model.disable_adapter():
-            normalized = _run_generation(model, tokenizer, prompt, NORMALIZE_GEN_KWARGS)
-        normalized = normalized.strip().strip('"').strip()
-        # 너무 짧거나(빈 응답) 비정상적으로 길면(설명을 덧붙인 경우) 원문 사용이 더 안전
-        if not normalized or len(normalized) > len(raw_text) * 3 + 50:
-            return raw_text
-        return normalized
-    except Exception:
-        log.exception("[정형화] 질문 정형화 실패 -> 원문 그대로 검색에 사용")
-        return raw_text
+
+    text = _REPEAT_CHAR_PATTERN.sub(r"\1\1", text)
+    text = _LAUGH_CRY_PATTERN.sub("", text)
+    for slang, formal in _SLANG_MAP.items():
+        text = text.replace(slang, formal)
+    text = _WHITESPACE_PATTERN.sub(" ", text).strip()
+
+    return text or raw_text
 
 
 def _get_eos_ids(tokenizer) -> list[int]:
