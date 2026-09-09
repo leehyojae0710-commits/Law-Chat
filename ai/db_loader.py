@@ -268,20 +268,30 @@ def search_precedent(query: str, display: int = 20) -> list[dict]:
 
 
 def fetch_precedent_from_api(prec_id: str, legal_type: LegalType) -> list[LegalDocument]:
-    """판례 본문을 판시사항/판결요지/전체 판례내용 단위로 청킹."""
+    """판례 본문을 판시사항/판결요지/전체 판례내용 단위로 청킹.
+
+    ⚠️ target=prec로 조회해도 실제로는 '판결'이 아니라 '결정'(재항고, 준항고 등
+    "OOOO모OOOO" 사건번호) 형태로 오는 문서가 섞여 있다. 이런 문서는 XML 태그가
+    판결요지/판례내용이 아니라 결정요지/결정문으로 내려오기 때문에, 기존처럼
+    판결 전용 태그만 찾으면 본문을 통째로 놓치고 내용이 텅 빈 문서가 쌓인다.
+    그래서 각 항목마다 판결/결정 두 가지 태그를 모두 후보로 시도한다.
+    """
     root = _api_service("prec", prec_id)
     case_name = _xtext(root, "사건명")
     case_num = _xtext(root, "사건번호")
 
     docs: list[LegalDocument] = []
-    for section_tag, section_label in [("판시사항", "판시사항"), ("판결요지", "판결요지")]:
-        text = _xtext(root, section_tag)
+    for section_tags, section_label in [
+        (("판시사항",), "판시사항"),
+        (("판결요지", "결정요지"), "판결요지"),
+    ]:
+        text = _xtext(root, *section_tags)
         if text:
             docs.append(LegalDocument(
                 content=text, law_name="", docu_type="판례", legal_type=legal_type,
                 case_num=case_num, source_id=prec_id, extra={"section": section_label, "case_name": case_name},
             ))
-    full_text = _xtext(root, "판례내용")
+    full_text = _xtext(root, "판례내용", "결정문")
     if full_text:
         for i, chunk in enumerate(_split_long_text(full_text)):
             docs.append(LegalDocument(
@@ -289,7 +299,10 @@ def fetch_precedent_from_api(prec_id: str, legal_type: LegalType) -> list[LegalD
                 case_num=case_num, source_id=prec_id,
                 extra={"section": f"판례내용_{i}", "case_name": case_name},
             ))
-    logger.info(f"[판례] {case_name} ({case_num}) → {len(docs)}개 청크")
+    if not docs:
+        logger.warning(f"[판례] {case_name or prec_id} ({case_num}) → 매칭되는 본문 태그를 찾지 못해 건너뜀")
+    else:
+        logger.info(f"[판례] {case_name} ({case_num}) → {len(docs)}개 청크")
     return docs
 
 
@@ -389,9 +402,56 @@ def _split_long_text(text: str, max_chars: int = 500, overlap: int = 50) -> list
 # ──────────────────────────────────────────────────────────────
 
 DEFAULT_KEYWORDS: dict[LegalType, list[str]] = {
-    "civil": ["민법", "임대차", "손해배상", "채권", "상속", "이혼"],
-    "criminal": ["형법", "형사소송법", "폭행", "절도", "사기", "살인", "강도", "성폭력"],
-    "administrative": ["행정절차법", "행정심판법", "행정소송법", "영업정지", "국가공무원법"],
+    # 민법 전체 편제(총칙/물권/채권/친족/상속)를 기준으로 폭넓게 구성.
+    # 키워드 목록으로 수집하는 구조상 완전한 커버리지는 불가능하지만,
+    # 자주 다뤄지는 분쟁 유형 위주로 최대한 빵꾸를 줄이는 것이 목표.
+    "civil": [
+        # 총칙
+        "법률행위", "의사표시", "대리권", "무효와 취소", "소멸시효",
+        # 물권
+        "소유권", "점유권", "지상권", "전세권", "유치권", "저당권", "부동산등기",
+        "명의신탁",
+        # 채권총칙
+        "채무불이행", "손해배상", "채권자대위권", "채권자취소권", "보증채무",
+        "연대채무", "채권양도", "상계",
+        # 채권각론 - 계약
+        "매매", "임대차", "사용대차", "소비대차", "도급", "위임", "임치",
+        "조합", "증여", "하자담보책임", "계약해제", "계약해지",
+        # 채권각론 - 법정채권
+        "부당이득", "불법행위", "사무관리",
+        # 친족
+        "혼인", "이혼", "친권", "양자", "부양", "재산분할", "위자료",
+        # 상속
+        "상속", "유언", "유류분",
+    ],
+    "criminal": [
+        # 형법총칙
+        "고의", "과실", "정당방위", "긴급피난", "미수범", "공범", "누범", "경합범",
+        # 형법각칙 - 개인적 법익
+        "살인", "상해", "폭행", "협박", "체포와 감금", "강간", "강제추행",
+        "성폭력", "명예훼손", "모욕", "주거침입",
+        # 형법각칙 - 재산죄
+        "절도", "강도", "사기", "공갈", "횡령", "배임", "장물", "손괴",
+        # 형법각칙 - 사회적/국가적 법익
+        "방화", "통화위조", "문서위조", "위증", "무고", "뇌물",
+        # 특별법
+        "특정범죄가중처벌", "성폭력범죄의 처벌", "아동학대", "마약류관리",
+        "도로교통법", "폭력행위 등 처벌",
+        # 형사소송/양형
+        "형사소송법", "구속", "보석", "공소시효", "양형기준", "집행유예",
+    ],
+    "administrative": [
+        # 행정법 총론
+        "행정절차법", "행정심판법", "행정소송법", "행정대집행법", "국가배상법",
+        "행정규제기본법", "정보공개법",
+        # 인사/공무원
+        "국가공무원법", "지방공무원법", "공무원 징계",
+        # 인허가/제재
+        "영업정지", "허가취소", "과징금", "부관", "행정지도",
+        # 주요 행정 영역
+        "건축법", "국토의 계획 및 이용에 관한 법률", "환경정책기본법",
+        "식품위생법", "조세", "부동산 공시", "산업재해보상보험법",
+    ],
     # 지식재산(IP) 분야 핵심 키워드
     "ip": [
         "특허법",
@@ -402,7 +462,10 @@ DEFAULT_KEYWORDS: dict[LegalType, list[str]] = {
         "실용신안법",
         "영업비밀",
         "저작권 침해",
-        "특허침해"
+        "특허침해",
+        "상표권 침해",
+        "직무발명",
+        "콘텐츠산업 진흥법",
     ],
 }
 
@@ -483,6 +546,14 @@ def collect_legal_type_documents(
         removed = before - len(all_docs)
         if removed:
             logger.warning(f"[criminal] 무관 법령 {removed}개 청크 제외 (CRIMINAL_EXCLUDE_LAW_NAMES 기준)")
+
+    # 스키마에 안 맞는 응답(예: 결정문 형태의 판례 등)으로 content가 빈 채로 만들어진
+    # 청크가 섞여 들어오면 임베딩/검색에 아무 도움이 안 되고 인덱스만 오염시키므로 제거.
+    before_blank = len(all_docs)
+    all_docs = [d for d in all_docs if d.content and d.content.strip()]
+    blank_removed = before_blank - len(all_docs)
+    if blank_removed:
+        logger.warning(f"[{legal_type}] 본문이 비어 있는 청크 {blank_removed}개 제외")
 
     logger.info(f"[{legal_type}] 전체 수집 완료: {len(all_docs)}개 청크")
     return all_docs

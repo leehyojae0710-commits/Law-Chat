@@ -145,13 +145,28 @@ def _keyword_scores(text: str) -> dict:
     return scores
 
 
-def classify_domains(text: str, threshold: float = 0.35, keyword_weight: float = 0.3):
+def classify_domains(
+    text: str,
+    threshold: float = 0.35,
+    keyword_weight: float = 0.3,
+    max_domains: int = 2,
+    margin: float = 0.2,
+):
     """
     질문 텍스트 -> 관련 법 도메인(들)을 점수와 함께 반환.
 
     반환값: [(domain_key, score), ...]  점수 내림차순, threshold 이상만 포함.
             단, 아무 도메인도 threshold를 못 넘으면(=매우 애매한 질문)
             최고 점수 도메인 1개는 강제로 포함시켜 '무응답'을 방지한다.
+
+    max_domains / margin: 여러 도메인이 동시에 threshold를 넘는 경우에도
+    무제한으로 어댑터를 다 태우지 않기 위한 안전장치.
+      - margin: 1위 점수와의 차이가 이 값보다 크게 벌어지는 도메인은 제외
+                (진짜 여러 분야에 걸친 질문만 다중 어댑터로 감)
+      - max_domains: margin을 통과해도 최종적으로 상위 N개까지만 채택
+    이 둘을 두는 이유: 어댑터 하나 추가될 때마다 추론 1회 + 최종 병합 단계의
+    부담이 커지고, 병합(자유 재작성) 자체가 할루시네이션 유발 지점이라
+    "정말 걸치는 경우"만 다중 어댑터로 보내는 게 속도와 품질 둘 다에 유리하다.
     """
     if not text or not text.strip():
         return [("criminal", 0.0)]  # 빈 입력 방어 (호출부에서 별도 검증 권장)
@@ -181,5 +196,11 @@ def classify_domains(text: str, threshold: float = 0.35, keyword_weight: float =
 
     if not detected:
         detected = [ranked[0]]
+
+    # margin/max_domains 필터: 1위와 점수 차이가 크게 나는 도메인은 제외하고,
+    # 그래도 남는 게 많으면 상위 max_domains개까지만 채택한다.
+    top_score = detected[0][1]
+    detected = [(d, s) for d, s in detected if (top_score - s) <= margin]
+    detected = detected[:max_domains]
 
     return detected
