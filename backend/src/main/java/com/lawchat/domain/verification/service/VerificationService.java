@@ -62,7 +62,7 @@ public class VerificationService {
      */
     @Transactional
     public VerificationResultResponse sendCode(SendCodeRequest request) {
-        return sendCode(request, true);
+        return sendCode(request, true, "아이디 찾기");
     }
 
     /**
@@ -83,23 +83,50 @@ public class VerificationService {
      */
     @Transactional
     public VerificationResultResponse sendCode(SendCodeRequest request, boolean requireExistingUser) {
+        return sendCode(request, requireExistingUser, "아이디 찾기");
+    }
+
+    /**
+     * 인증코드 발송 (용도 지정).
+     *
+     * purposeLabel 은 메일 제목에 들어간다.
+     *   "아이디 찾기" / "계정 복구" / "회원가입"
+     * 같은 절차를 여러 기능이 쓰는데 제목이 하나로 고정돼 있으면,
+     * 복구하려는 사람이 "아이디 찾기" 메일을 받아 잘못 온 것으로 오해한다.
+     */
+    @Transactional
+    public VerificationResultResponse sendCode(SendCodeRequest request, boolean requireExistingUser,
+                                               String purposeLabel) {
         String normalizedValue = normalize(request.contactType(), request.contactValue());
 
         if (!requireExistingUser) {
-            issueAndSend(request.contactType(), normalizedValue);
+            issueAndSend(request.contactType(), normalizedValue, purposeLabel);
             return VerificationResultResponse.ok("입력하신 연락처로 인증코드를 발송했습니다.");
         }
 
         findUserByContact(request.contactType(), normalizedValue)
                 .ifPresentOrElse(
-                        user -> issueAndSend(request.contactType(), normalizedValue),
+                        user -> issueAndSend(request.contactType(), normalizedValue, purposeLabel),
                         () -> log.info("아이디 찾기 요청 - 존재하지 않는 연락처 (조용히 무시): type={}", request.contactType())
                 );
 
         return VerificationResultResponse.ok("입력하신 연락처로 인증코드를 발송했습니다. (가입 정보가 없으면 발송되지 않습니다)");
     }
 
-    private void issueAndSend(ContactType contactType, String contactValue) {
+    /**
+     * 인증코드를 만들어 저장하고 발송한다.
+     *
+     * ★ 제목을 파라미터로 받는 이유
+     *   예전에는 "[LawChat] 아이디 찾기 인증코드" 로 고정돼 있었다.
+     *   같은 인증 절차를 계정 복구·회원가입에도 쓰는데, 복구하려는 사람이
+     *   "아이디 찾기" 메일을 받으면 잘못 온 것으로 오해한다.
+     *
+     *   DB 에는 제목·본문을 저장하지 않으므로(코드와 연락처만 저장) 컬럼을 늘릴 필요가 없다.
+     *   부르는 쪽이 용도에 맞는 문구를 넘기면 된다.
+     *
+     * @param purposeLabel 메일 제목에 들어갈 용도 (예: "아이디 찾기", "계정 복구", "회원가입")
+     */
+    private void issueAndSend(ContactType contactType, String contactValue, String purposeLabel) {
         String code = codeGenerator.generate6Digit();
         LocalDateTime expiredAt = LocalDateTime.now().plusMinutes(CODE_TTL_MINUTES);
 
@@ -111,7 +138,7 @@ public class VerificationService {
                 .build();
         idVerificationRepository.save(verification);
 
-        String subject = "[LawChat] 아이디 찾기 인증코드";
+        String subject = "[LawChat] " + purposeLabel + " 인증코드";
         String body = "인증코드: " + code + " (5분 이내에 입력해 주세요)";
 
         if (contactType == ContactType.EMAIL) {
