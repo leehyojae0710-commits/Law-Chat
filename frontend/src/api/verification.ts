@@ -66,6 +66,36 @@ export const verifyIdFindCode = async (
 };
 
 // ============================================================
+// 계정 복구 — POST /api/verification/restore/*
+// 아이디 찾기와 절차(코드 발송/확인)는 같지만 메일 제목이 다르므로
+// 백엔드에서 경로를 분리해뒀다 (RestoreVerificationController 참고).
+// ============================================================
+
+export const sendRestoreCode = async (
+  contactType: ContactType,
+  contactValue: string
+): Promise<VerificationResult> => {
+  const res = await apiClient.post<VerificationResult>("/verification/restore/send-code", {
+    contactType,
+    contactValue,
+  });
+  return res.data;
+};
+
+export const verifyRestoreCode = async (
+  contactType: ContactType,
+  contactValue: string,
+  code: string
+): Promise<FindIdResult> => {
+  const res = await apiClient.post<FindIdResult>("/verification/restore/verify-code", {
+    contactType,
+    contactValue,
+    code,
+  });
+  return res.data;
+};
+
+// ============================================================
 // 회원가입 전화번호 인증 — POST /api/verification/signup/*
 // ============================================================
 

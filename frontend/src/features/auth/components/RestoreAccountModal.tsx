@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { sendIdFindCode, verifyIdFindCode, type ContactType } from "../../../api/verification";
+import { sendRestoreCode, verifyRestoreCode, type ContactType } from "../../../api/verification";
 import { restoreAccount } from "../../../api/auth";
 
 interface RestoreAccountModalProps {
@@ -37,7 +37,7 @@ export const RestoreAccountModal = ({ message, verifyBy, verifyTarget, onClose }
     setError(null);
     setIsSubmitting(true);
     try {
-      const res = await sendIdFindCode(verifyBy, verifyTarget);
+      const res = await sendRestoreCode(verifyBy, verifyTarget);
       setNotice(res.message);
       setStep("code");
     } catch (err) {
@@ -56,7 +56,7 @@ export const RestoreAccountModal = ({ message, verifyBy, verifyTarget, onClose }
     setError(null);
     setIsSubmitting(true);
     try {
-      await verifyIdFindCode(verifyBy, verifyTarget, code);
+      await verifyRestoreCode(verifyBy, verifyTarget, code);
       await restoreAccount(verifyTarget);
       setStep("done");
     } catch (err) {
