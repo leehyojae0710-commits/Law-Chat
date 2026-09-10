@@ -185,6 +185,7 @@ export const SignupForm = () => {
       if (res.status === "AVAILABLE") {
         setPhoneVerifyStatus("checked"); // [인증하기] 버튼 활성화
         setPhoneNotice(res.message);
+        handleSendCode;
       } else {
         setPhoneVerifyStatus("idle");
         setPhoneError(res.message);
@@ -318,18 +319,19 @@ export const SignupForm = () => {
               title="올바른 휴대폰 번호 형식이 아닙니다. (예: 010-1234-5678)"
               className="flex-1 border rounded-lg px-3 py-2.5 text-sm"
             />
-            <button
+            {/* <button
               type="button"
               onClick={handlePhoneCheck}
               disabled={!phone || phoneCheckLoading}
               className="shrink-0 px-3 py-2.5 rounded-lg border text-sm font-medium disabled:opacity-50"
             >
               {phoneCheckLoading ? "확인 중..." : "중복확인"}
-            </button>
+            </button> */}
             <button
               type="button"
-              onClick={handleSendCode}
-              disabled={phoneVerifyStatus === "idle" || phoneVerifyStatus === "verified" || sendCodeLoading || resendCooldown > 0}
+              onClick={handlePhoneCheck}
+              //disabled={phoneVerifyStatus === "idle" || phoneVerifyStatus === "verified" || sendCodeLoading || resendCooldown > 0}
+              disabled={!phone || phoneCheckLoading}
               className="shrink-0 px-3 py-2.5 rounded-lg bg-violet-600 text-white text-sm font-medium disabled:opacity-50"
             >
               {resendCooldown > 0
