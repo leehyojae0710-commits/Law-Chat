@@ -24,6 +24,7 @@ import re
 import logging
 import time
 import uuid
+import threading
 import torch
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
@@ -64,7 +65,12 @@ MODEL_GROUPS = {
 # RAG를 적용할 legal_type 목록. 해당 legal_type의 인덱스가
 # ./indexes/<legal_type>/ 에 미리 만들어져 있어야 한다 (db_loader.py 참고).
 RAG_LEGAL_TYPES = ["civil", "criminal", "administrative"]
-RAG_TOP_K = 5
+RAG_TOP_K = 3  # 단일 도메인(/chat, 도메인 1개인 /chat/auto) 기준 근거 개수
+
+# /chat/auto에서 여러 도메인이 동시에 잡혀도(예: 민사+형사) 사용자에게 보이는 참조
+# 판례/법령 총 개수가 도메인 수에 비례해 늘어나지 않도록, 도메인별 k를 나눠서 요청한다.
+# (예전엔 도메인마다 RAG_TOP_K=5씩 따로 가져와 2개 도메인이면 최대 10개까지 나열됐음)
+MAX_TOTAL_SOURCES = 3
 
 # /chat/auto, /chat/simple에서 classify_domains()에 넘기는 다중 도메인 제한.
 # 예전에는 threshold(0.35)만 넘으면 4개 도메인 다 어댑터를 태워서 느리고,
@@ -210,7 +216,12 @@ def _load_model_group(group_name: str, config: dict):
             model.load_adapter(path, adapter_name=name)
 
     model.eval()
-    return {"model": model, "tokenizer": tokenizer, "adapters": set(available.keys())}
+    # 이 모델 인스턴스(그룹) 하나를 여러 요청 스레드가 동시에 쓸 수 있는데,
+    # model.set_adapter() 는 "현재 활성 어댑터"라는 공유 상태를 바꾸는 호출이라
+    # 락 없이 두 요청이 겹치면 A가 고른 어댑터로 B가 생성해버리는 레이스가 생긴다
+    # (예: criminal_qa/administrative_qa 는 같은 ko_llama3 그룹을 공유).
+    # set_adapter ~ generate 구간을 이 락으로 감싸 한 번에 한 요청만 돌게 한다.
+    return {"model": model, "tokenizer": tokenizer, "adapters": set(available.keys()), "lock": threading.Lock()}
 
 
 @asynccontextmanager
@@ -439,7 +450,7 @@ def _get_eos_ids(tokenizer) -> list[int]:
     return ids
 
 
-def _run_generation(model, tokenizer, prompt: str, gen_kwargs: dict) -> str:
+def _run_generation(model, tokenizer, prompt: str, gen_kwargs: dict, debug_label: str = "") -> str:
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096).to(model.device)
     with torch.no_grad():
         output_ids = model.generate(
@@ -449,11 +460,24 @@ def _run_generation(model, tokenizer, prompt: str, gen_kwargs: dict) -> str:
             **gen_kwargs,
         )
     decoded = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+
+    # [임시 디버그] "assistant" 파싱이 원인인지, 모델이 실제로 이상하게 생성한 건지 구분하기 위해
+    # 분리 전 원문 길이와 "assistant" 등장 횟수, 분리 후 각 조각을 찍는다. 확인 끝나면 제거할 것.
+    if debug_label:
+        parts = decoded.split("assistant")
+        log.info(
+            f"[DEBUG][{debug_label}] decoded 길이={len(decoded)}, "
+            f"'assistant' 등장 횟수={len(parts) - 1}"
+        )
+        for i, p in enumerate(parts):
+            log.info(f"[DEBUG][{debug_label}] part[{i}] (앞 200자)={p[:200]!r}")
+
     return " ".join(decoded.split("assistant")[1:]).strip()
 
 
 def _generate_qa(
-    legal_type: str, text: str, instruction: str | None, retrieval_query: str | None = None
+    legal_type: str, text: str, instruction: str | None,
+    retrieval_query: str | None = None, k: int = RAG_TOP_K,
 ) -> tuple[str, str, str, list[dict]]:
     """QA 전용 생성. 반환: (adapter_name, group_name, answer, sources)"""
     adapter_name = f"{legal_type}_qa"
@@ -470,10 +494,14 @@ def _generate_qa(
     tokenizer = group["tokenizer"]
 
     instruction = instruction or DEFAULT_QA_INSTRUCTION
-    prompt, sources = build_rag_prompt(tokenizer, legal_type, instruction, text, retrieval_query=retrieval_query)
+    prompt, sources = build_rag_prompt(tokenizer, legal_type, instruction, text, retrieval_query=retrieval_query, k=k)
 
-    model.set_adapter(adapter_name)
-    answer = _run_generation(model, tokenizer, prompt, QA_GEN_KWARGS)
+    # set_adapter()가 모델(그룹) 공유 상태를 바꾸므로, 이 그룹을 쓰는 다른 요청과
+    # 절대 겹치면 안 된다. RAG 검색(위)은 모델 상태를 안 건드리니 락 밖에 둬서
+    # 다른 요청과 병렬로 돌게 하고, set_adapter+generate만 직렬화한다.
+    with group["lock"]:
+        model.set_adapter(adapter_name)
+        answer = _run_generation(model, tokenizer, prompt, QA_GEN_KWARGS, debug_label=adapter_name)
 
     if _has_unverified_citation(answer, sources):
         log.warning(f"[{legal_type}] 검색되지 않은 법 조문 인용 발견 -> 경고 문구 추가")
@@ -546,11 +574,20 @@ def chat_auto(req: AutoChatRequest):
 
     domain_answers: list[DomainAnswer] = []
     unavailable: list[str] = []
+
+    # 실제로 어댑터가 로드된 도메인만 추려서, 이 개수 기준으로 도메인당 k(근거 개수)를
+    # 나눠 배분한다 (예: MAX_TOTAL_SOURCES=3, 도메인 2개 -> 2개+1개).
+    # 나머지가 있으면 점수가 높은(=ranked에서 앞선) 도메인부터 1개씩 더 준다.
+    available = [(lt, score) for lt, score in ranked if f"{lt}_qa" in state["adapter_to_group"]]
+    base_k, remainder = divmod(MAX_TOTAL_SOURCES, max(len(available), 1))
+
     for legal_type, score in ranked:
         adapter_key = f"{legal_type}_qa"
         if adapter_key in state["adapter_to_group"]:
+            idx = next(i for i, (lt, _) in enumerate(available) if lt == legal_type)
+            domain_k = max(1, base_k + (1 if idx < remainder else 0))
             adapter_name, model_group, answer, sources = _generate_qa(
-                legal_type, req.text, req.instruction, retrieval_query=retrieval_query
+                legal_type, req.text, req.instruction, retrieval_query=retrieval_query, k=domain_k
             )
             domain_answers.append(
                 DomainAnswer(
