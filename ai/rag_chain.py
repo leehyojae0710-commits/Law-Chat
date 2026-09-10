@@ -105,20 +105,6 @@ def retrieve_context(
 
     dense_pool = max(k * 4, 20)
     dense_hits = faiss_index.similarity_search_with_score(question, k=dense_pool)
-
-    # [임시 디버그] 상위 10건을 통과 여부와 무관하게 점수/법령명과 함께 그대로 찍는다.
-    # 목적: "양자과학기술법" 같은 무관 문서가 fallback 없이도 원래 dense 검색 점수로
-    # threshold(<=1.0)를 통과하는 건지, 다른 경로로 섞여드는 건지 확인.
-    # 확인 끝나면 이 블록은 제거할 것.
-    logger.info(f"[DEBUG][{legal_type}] 질문: {question!r}")
-    for i, (d, score) in enumerate(dense_hits[:10], start=1):
-        meta = d.metadata
-        label = meta.get("law_name") or meta.get("case_num") or "?"
-        logger.info(
-            f"[DEBUG][{legal_type}] #{i} score={score:.4f} label={label!r} "
-            f"content={d.page_content[:40]!r}"
-        )
-
     dense_docs = [d for d, score in dense_hits if score <= score_threshold]
 
     dropped = len(dense_hits) - len(dense_docs)

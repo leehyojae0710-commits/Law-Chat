@@ -88,7 +88,12 @@ CITATION_PATTERN = re.compile(r"([가-힣]+법(?:\s*시행령|\s*시행규칙)?)
 # qa 태스크는 RAG 컨텍스트가 프롬프트에 들어가는 만큼 조금 더 보수적으로(temperature 낮게) 생성
 QA_GEN_KWARGS = dict(
     max_new_tokens=2560, do_sample=True, top_p=0.9, temperature=0.1,
-    repetition_penalty=1.15, no_repeat_ngram_size=3,
+    # repetition_penalty=1.15, no_repeat_ngram_size=3 였던 이전 설정은 한국어 법률 문체에서
+    # 자연스럽게 반복되는 조사/어미(-습니다, -에 따라 등)까지 강제로 막아버려서, 모델이
+    # 자연스러운 다음 토큰을 못 고르고 다른 언어 문자("应")나 존재하지 않는 용어("거북",
+    # "피요")로 새는 현상의 원인으로 보임. repetition_penalty를 살짝만 걸고
+    # no_repeat_ngram_size는 없애 자연스러운 반복을 허용한다.
+    repetition_penalty=1.05,
 )
 
 DEFAULT_QA_INSTRUCTION = "질문에 대해 정확하고 간결하게 답변하시오."
@@ -450,7 +455,7 @@ def _get_eos_ids(tokenizer) -> list[int]:
     return ids
 
 
-def _run_generation(model, tokenizer, prompt: str, gen_kwargs: dict, debug_label: str = "") -> str:
+def _run_generation(model, tokenizer, prompt: str, gen_kwargs: dict) -> str:
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096).to(model.device)
     with torch.no_grad():
         output_ids = model.generate(
@@ -460,18 +465,6 @@ def _run_generation(model, tokenizer, prompt: str, gen_kwargs: dict, debug_label
             **gen_kwargs,
         )
     decoded = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-
-    # [임시 디버그] "assistant" 파싱이 원인인지, 모델이 실제로 이상하게 생성한 건지 구분하기 위해
-    # 분리 전 원문 길이와 "assistant" 등장 횟수, 분리 후 각 조각을 찍는다. 확인 끝나면 제거할 것.
-    if debug_label:
-        parts = decoded.split("assistant")
-        log.info(
-            f"[DEBUG][{debug_label}] decoded 길이={len(decoded)}, "
-            f"'assistant' 등장 횟수={len(parts) - 1}"
-        )
-        for i, p in enumerate(parts):
-            log.info(f"[DEBUG][{debug_label}] part[{i}] (앞 200자)={p[:200]!r}")
-
     return " ".join(decoded.split("assistant")[1:]).strip()
 
 
@@ -501,7 +494,7 @@ def _generate_qa(
     # 다른 요청과 병렬로 돌게 하고, set_adapter+generate만 직렬화한다.
     with group["lock"]:
         model.set_adapter(adapter_name)
-        answer = _run_generation(model, tokenizer, prompt, QA_GEN_KWARGS, debug_label=adapter_name)
+        answer = _run_generation(model, tokenizer, prompt, QA_GEN_KWARGS)
 
     if _has_unverified_citation(answer, sources):
         log.warning(f"[{legal_type}] 검색되지 않은 법 조문 인용 발견 -> 경고 문구 추가")
