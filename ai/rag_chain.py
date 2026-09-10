@@ -10,6 +10,7 @@ db_loader.py로 만든 FAISS(Dense) + BM25(Keyword) 인덱스를 로딩해두고
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from db_loader import load_indexes, LegalType
@@ -20,7 +21,20 @@ logger = logging.getLogger("legal-chatbot")
 ALL_LEGAL_TYPES: list[str] = ["civil", "criminal", "administrative"]
 _INDEX_CACHE: dict[str, tuple] = {}
 _RRF_K = 60
-_DENSE_SCORE_THRESHOLD = 1.0
+# .env(RAG_SCORE_THRESHOLD)로 재배포 없이 튜닝할 수 있게 함. 기본값은 기존과 동일한 1.0.
+# (criminal 도메인에서 사실관계가 다른 판례가 threshold를 넘어 들어오는 문제가 확인됐는데,
+# 정확히 얼마나 당겨야 하는지는 실제 점수 분포를 봐야 알 수 있어서 코드에 고정값을 박지 않음
+# - RAG_DEBUG=true로 실제 점수 확인 후 .env에서 값을 조정하면 됨.)
+_DENSE_SCORE_THRESHOLD = float(os.environ.get("RAG_SCORE_THRESHOLD", "1.0"))
+
+# 검색 후보 전체(점수 + 내용)를 로그로 보고 싶을 때만 켠다.
+# RAG_DEBUG=true 로 서버를 띄우면 retrieve_context()가 호출될 때마다 dense 검색
+# 상위 후보들을 (점수, 내용 앞부분)까지 로그로 남긴다. 기본값은 false라 평소엔
+# 로그가 늘어나지 않음 - "필요할 때만 코드 수정 없이 켠다"는 목적.
+# 내용은 200자까지만 잘라서 보여주는데, 그래도 부족하면 debug_criminal_qa.py 처럼
+# _content를 통째로 출력하는 스크립트를 쓰는 게 낫다 (로그가 너무 길어지지 않게).
+RAG_DEBUG = os.environ.get("RAG_DEBUG", "false").lower() == "true"
+_DEBUG_PREVIEW_CHARS = 200
 
 # ──────────────────────────────────────────────────────────────
 # Spring 백엔드(LegalSourceResponse: lawName/articleNumber/url) 연동용.
@@ -106,6 +120,20 @@ def retrieve_context(
     dense_pool = max(k * 4, 20)
     dense_hits = faiss_index.similarity_search_with_score(question, k=dense_pool)
     dense_docs = [d for d, score in dense_hits if score <= score_threshold]
+    # RRF 융합 단계에서 원래 dense 점수(거리)가 사라지므로, page_content 기준으로 따로 보관해뒀다가
+    # 최종 결과에 다시 붙인다 (RAG_DEBUG 없이도 score를 보고 threshold를 튜닝할 수 있게).
+    dense_score_map = {doc.page_content: score for doc, score in dense_hits}
+
+    if RAG_DEBUG:
+        logger.info(f"[{legal_type}] RAG_DEBUG 쿼리: {question!r}")
+        for rank, (doc, score) in enumerate(dense_hits, start=1):
+            meta = doc.metadata
+            label = " ".join(
+                p for p in [meta.get("law_name"), meta.get("article_no"), meta.get("case_num")] if p
+            ) or meta.get("docu_type", "출처 미상")
+            kept = "유지" if score <= score_threshold else "제외(threshold 초과)"
+            preview = doc.page_content[:_DEBUG_PREVIEW_CHARS].replace("\n", " ")
+            logger.info(f"[{legal_type}] RAG_DEBUG #{rank} score={score:.4f} ({kept}) {label} | {preview}")
 
     dropped = len(dense_hits) - len(dense_docs)
     if dropped:
@@ -173,6 +201,9 @@ def retrieve_context(
             "case_num": meta.get("case_num", "") or "",
             "url": build_source_url(docu_type, source_id, jo_no, jo_br_no),
             "_content": doc.page_content,
+            # BM25 단독으로 걸려 dense_score_map에 없는 문서는 None (SourceDoc(**s)는 extra
+            # 필드를 무시하므로 main.py의 응답 스키마엔 영향 없음 - 디버깅/튜닝 용도로만 씀).
+            "_dense_score": dense_score_map.get(doc.page_content),
         })
     return results
 
@@ -198,7 +229,10 @@ def build_rag_messages(instruction: str, question: str, context_block: str) -> l
         "1. [참고 자료]의 법리와 사실관계를 왜곡하지 마십시오.\n"
         "2. 알 수 없는 단어나 비정상적인 어휘를 만들어내지 마십시오.\n"
         "3. 문장은 완전한 문장으로 명확하게 끝맺으십시오.\n"
-        "4. 자료에 없는 내용은 단정하여 서술하지 마십시오.\n\n"
+        "4. 자료에 없는 내용은 단정하여 서술하지 마십시오.\n"
+        "5. [참고 자료]에 담긴 사건의 당사자 관계나 사실관계(예: 가해자/피해자 구도, 사건의 종류)가 "
+        "질문 속 상황과 명백히 다르면, 그 자료의 구체적 내용(사건번호·세부 사실)을 인용하지 말고 "
+        "관련 법령의 일반적인 법리만 설명하십시오.\n\n"
     )
     user_message = (
         f"지시 : {instruction}\n\n"
