@@ -457,6 +457,7 @@ def _get_eos_ids(tokenizer) -> list[int]:
 
 def _run_generation(model, tokenizer, prompt: str, gen_kwargs: dict) -> str:
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096).to(model.device)
+    input_len = inputs["input_ids"].shape[-1]
     with torch.no_grad():
         output_ids = model.generate(
             **inputs,
@@ -464,8 +465,14 @@ def _run_generation(model, tokenizer, prompt: str, gen_kwargs: dict) -> str:
             pad_token_id=tokenizer.pad_token_id,
             **gen_kwargs,
         )
-    decoded = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-    return " ".join(decoded.split("assistant")[1:]).strip()
+    # (기존에는 전체 시퀀스를 디코딩한 뒤 문자열 "assistant"가 나오는 지점을 잘라 답변을
+    # 추출했음. skip_special_tokens=True여도 Llama-3 채팅 템플릿의
+    # <|start_header_id|>assistant<|end_header_id|> 중 "assistant"는 특수 토큰이 아니라
+    # 일반 단어 토큰이라 디코딩 후 텍스트에 그대로 남는데, 이게 "우연히 한 번만" 나온다는
+    # 전제에 기대는 방식이었음 -> 참고자료나 프롬프트 구성이 바뀌면 조용히 깨질 수 있어
+    # input_ids 길이만큼 잘라내 새로 생성된 토큰만 디코딩하는 방식으로 교체.
+    new_tokens = output_ids[0][input_len:]
+    return tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
 
 def _generate_qa(
