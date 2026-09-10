@@ -46,7 +46,7 @@ public class SignupVerificationController {
     @PostMapping("/send-code")
     public ResponseEntity<VerificationResultResponse> sendCode(
             @Valid @RequestBody SendCodeRequest request) {
-        return ResponseEntity.ok(verificationService.sendCode(request, false));
+        return ResponseEntity.ok(verificationService.sendCode(request, false, "회원가입"));
     }
 
     /**
