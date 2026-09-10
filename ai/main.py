@@ -385,16 +385,19 @@ def _allowed_citations(sources: list[dict]) -> set[tuple[str, str]]:
 
 def _has_unverified_citation(answer: str, sources: list[dict]) -> bool:
     """답변에 등장한 인용 중 실제 검색된 RAG 근거에 없는 게 하나라도 있으면 True.
-    sources가 아예 비어 있으면(RAG 인덱스가 없었던 경우) 판단 근거가 없으므로 검사를
-    건너뛴다(원래도 '환각 위험 있음'으로 로그가 남는 경로라 여기서 이중 경고는 생략)."""
-    if not sources:
-        return False
+    sources가 비어 있다면(threshold 필터링 등으로 근거 문서가 0건인 경우) 답변에
+    등장하는 어떤 구체적 조문도 근거가 있을 수 없으므로, 인용이 하나라도 있으면
+    곧바로 미검증으로 판단한다.
+    (2026-09: 기존엔 sources가 비면 검사 자체를 건너뛰어 False를 반환했는데, 이게
+    오히려 "근거 0건 -> 모델이 조문을 지어냄" 케이스에서 검증을 무력화시키는
+    원인이었음 - RAG_SCORE_THRESHOLD 조정 이후 이 경로가 실제로 발생함을 확인함.)"""
     cited = _extract_citations(answer)
     if not cited:
         return False
+    if not sources:
+        return True
     allowed = _allowed_citations(sources)
     return any(c not in allowed for c in cited)
-
 
 # ─────────────────────────────────────────────────────────────
 # 질문 정형화 (2026-09: LLM 재작성 -> 규칙 기반으로 교체)
