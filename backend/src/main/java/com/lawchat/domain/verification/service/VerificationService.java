@@ -54,13 +54,13 @@ public class VerificationService {
     // 1) 인증코드 발송
     // ==================================================================
 
-    @Transactional
     /**
      * 아이디 찾기용 인증코드 발송.
      *
      * 가입 이력이 있을 때만 실제로 보낸다. 없으면 조용히 무시하고 성공으로 응답한다.
      * "가입 정보가 없다" 고 알려주면 연락처를 넣어보는 것만으로 가입 여부를 알 수 있다.
      */
+    @Transactional
     public VerificationResultResponse sendCode(SendCodeRequest request) {
         return sendCode(request, true);
     }
@@ -169,6 +169,17 @@ public class VerificationService {
         return verification;
     }
 
+    /**
+     * 아이디 찾기 인증코드 확인.
+     *
+     * ★ @Transactional 이 반드시 있어야 한다
+     *   이 클래스는 @Transactional(readOnly = true) 라, 붙이지 않으면 읽기 전용으로 돈다.
+     *   그러면 consumeCode 안의 verification.verify() 로 is_verified=true, used_at 을 찍어도
+     *   **DB 에 반영되지 않는다.**
+     *   화면에서는 인증이 성공한 것처럼 보이지만 흔적이 남지 않아,
+     *   뒤이은 계정 복구가 "전화번호 인증이 필요해요" 로 막힌다.
+     */
+    @Transactional
     public FindIdResultResponse verifyCode(VerifyCodeRequest request) {
         String normalizedValue = normalize(request.contactType(), request.contactValue());
 
